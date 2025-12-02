@@ -1,4 +1,4 @@
-import { HeroSection } from "@/components/blocks/hero-section-dark";
+import { HeroSectionApple } from "@/components/blocks/hero-section-apple";
 import { Features } from "@/components/landing/Features";
 import { Stats } from "@/components/landing/Stats";
 import { CTA } from "@/components/landing/CTA";
@@ -16,32 +16,19 @@ export default function Index({ theme, setTheme }: IndexProps) {
       <Navbar theme={theme} setTheme={setTheme} />
       
       <main>
-        <HeroSection
-          title="Datadog x Google Cloud Hackathon"
-          subtitle={{
-            regular: "End-to-end LLM observability with ",
-            gradient: "ObservAI",
-          }}
-          description="Monitor, detect anomalies, and debug your AI applications with comprehensive telemetry. Powered by Datadog and Google Cloud Vertex AI."
+        <HeroSectionApple
+          badge="Datadog × Google Cloud Hackathon 2024"
+          title="The future of"
+          highlightedTitle="AI Observability"
+          description="End-to-end LLM monitoring with deep telemetry, anomaly detection, and automated incident management. Built for the next generation of AI engineers."
           ctaText="Explore Dashboard"
           ctaHref="/dashboard"
-          secondaryCtaText="View Documentation"
+          secondaryCtaText="Watch Demo"
           secondaryCtaHref="#features"
-          bottomImage={{
-            light: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1600&h=900&fit=crop",
-            dark: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1600&h=900&fit=crop",
-          }}
-          gridOptions={{
-            angle: 65,
-            opacity: 0.3,
-            cellSize: 50,
-            lightLineColor: "hsl(262, 83%, 58%, 0.15)",
-            darkLineColor: "hsl(262, 83%, 65%, 0.2)",
-          }}
         />
 
-        <Stats />
         <Features />
+        <Stats />
         <CTA />
       </main>
 
