@@ -1,0 +1,95 @@
+# Supabase Configuration
+# This file configures your local Supabase development environment
+
+[project]
+id = "observai-hub"
+name = "ObservAI Hub"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "observai"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[api.tls]
+enabled = false
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[db.pooler]
+enabled = true
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+
+[realtime]
+enabled = true
+ip_version = "IPv4"
+max_header_length = 4096
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["https://localhost:3000"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+enable_anonymous_sign_ins = false
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+secure_password_change = true
+max_frequency = "1s"
+
+[auth.email.template.invite]
+subject = "You've been invited to ObservAI Hub"
+
+[auth.email.template.confirmation]
+subject = "Confirm your ObservAI Hub account"
+
+[auth.email.template.recovery]
+subject = "Reset your ObservAI Hub password"
+
+[auth.email.template.email_change]
+subject = "Confirm your email change for ObservAI Hub"
+
+[auth.sms]
+enable_signup = false
+enable_confirmations = false
+
+[auth.external.google]
+enabled = true
+client_id = "env(GOOGLE_CLIENT_ID)"
+secret = "env(GOOGLE_CLIENT_SECRET)"
+redirect_uri = "http://localhost:54321/auth/v1/callback"
+
+[auth.external.github]
+enabled = true
+client_id = "env(GITHUB_CLIENT_ID)"
+secret = "env(GITHUB_CLIENT_SECRET)"
+redirect_uri = "http://localhost:54321/auth/v1/callback"
+
+[analytics]
+enabled = true
+port = 54327
+backend = "postgres"
+
+[edge_runtime]
+enabled = true
+policy = "per_worker"
+inspector_port = 8083
+
+[functions]
+verify_jwt = true

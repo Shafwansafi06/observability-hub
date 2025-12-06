@@ -1,0 +1,316 @@
+{
+  "dashboardFilters": [],
+  "displayName": "Vertex AI - LLM Inference Overview",
+  "dashboardLayout": {
+    "gridLayout": {
+      "columns": "2",
+      "widgets": [
+        {
+          "title": "Prediction Request Rate",
+          "xyChart": {
+            "chartOptions": {
+              "mode": "COLOR"
+            },
+            "dataSets": [
+              {
+                "minAlignmentPeriod": "60s",
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_RATE"
+                    },
+                    "filter": "resource.type=\"aiplatform.googleapis.com/Endpoint\" metric.type=\"aiplatform.googleapis.com/prediction/prediction_count\""
+                  }
+                }
+              }
+            ],
+            "timeshiftDuration": "0s",
+            "yAxis": {
+              "label": "Requests/sec",
+              "scale": "LINEAR"
+            }
+          }
+        },
+        {
+          "title": "P50/P95/P99 Latency",
+          "xyChart": {
+            "chartOptions": {
+              "mode": "COLOR"
+            },
+            "dataSets": [
+              {
+                "minAlignmentPeriod": "60s",
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "crossSeriesReducer": "REDUCE_PERCENTILE_50",
+                      "groupByFields": ["resource.endpoint_id"],
+                      "perSeriesAligner": "ALIGN_DELTA"
+                    },
+                    "filter": "resource.type=\"aiplatform.googleapis.com/Endpoint\" metric.type=\"aiplatform.googleapis.com/prediction/latency\""
+                  }
+                },
+                "legendTemplate": "P50"
+              },
+              {
+                "minAlignmentPeriod": "60s",
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "crossSeriesReducer": "REDUCE_PERCENTILE_95",
+                      "groupByFields": ["resource.endpoint_id"],
+                      "perSeriesAligner": "ALIGN_DELTA"
+                    },
+                    "filter": "resource.type=\"aiplatform.googleapis.com/Endpoint\" metric.type=\"aiplatform.googleapis.com/prediction/latency\""
+                  }
+                },
+                "legendTemplate": "P95"
+              },
+              {
+                "minAlignmentPeriod": "60s",
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "crossSeriesReducer": "REDUCE_PERCENTILE_99",
+                      "groupByFields": ["resource.endpoint_id"],
+                      "perSeriesAligner": "ALIGN_DELTA"
+                    },
+                    "filter": "resource.type=\"aiplatform.googleapis.com/Endpoint\" metric.type=\"aiplatform.googleapis.com/prediction/latency\""
+                  }
+                },
+                "legendTemplate": "P99"
+              }
+            ],
+            "yAxis": {
+              "label": "Latency (ms)",
+              "scale": "LINEAR"
+            }
+          }
+        },
+        {
+          "title": "Error Rate by Deployed Model",
+          "xyChart": {
+            "dataSets": [
+              {
+                "minAlignmentPeriod": "60s",
+                "plotType": "STACKED_AREA",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": ["resource.deployed_model_id"],
+                      "perSeriesAligner": "ALIGN_RATE"
+                    },
+                    "filter": "resource.type=\"aiplatform.googleapis.com/Endpoint\" metric.type=\"aiplatform.googleapis.com/prediction/error_count\""
+                  }
+                }
+              }
+            ],
+            "yAxis": {
+              "label": "Errors/sec",
+              "scale": "LINEAR"
+            }
+          }
+        },
+        {
+          "title": "Active Replicas",
+          "xyChart": {
+            "dataSets": [
+              {
+                "minAlignmentPeriod": "60s",
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_MEAN"
+                    },
+                    "filter": "resource.type=\"aiplatform.googleapis.com/Endpoint\" metric.type=\"aiplatform.googleapis.com/prediction/replica_count\""
+                  }
+                }
+              }
+            ],
+            "yAxis": {
+              "label": "Replicas",
+              "scale": "LINEAR"
+            }
+          }
+        },
+        {
+          "title": "GPU Utilization",
+          "xyChart": {
+            "dataSets": [
+              {
+                "minAlignmentPeriod": "60s",
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_MEAN"
+                    },
+                    "filter": "resource.type=\"aiplatform.googleapis.com/Endpoint\" metric.type=\"custom.googleapis.com/vertex_ai/gpu/utilization\""
+                  }
+                }
+              }
+            ],
+            "yAxis": {
+              "label": "Utilization %",
+              "scale": "LINEAR"
+            }
+          }
+        },
+        {
+          "title": "Token Usage (Prompt + Completion)",
+          "xyChart": {
+            "dataSets": [
+              {
+                "minAlignmentPeriod": "60s",
+                "plotType": "STACKED_AREA",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": ["metric.token_type"],
+                      "perSeriesAligner": "ALIGN_RATE"
+                    },
+                    "filter": "resource.type=\"aiplatform.googleapis.com/Endpoint\" metric.type=\"custom.googleapis.com/vertex_ai/tokens\""
+                  }
+                }
+              }
+            ],
+            "yAxis": {
+              "label": "Tokens/sec",
+              "scale": "LINEAR"
+            }
+          }
+        },
+        {
+          "title": "Cost per Hour",
+          "xyChart": {
+            "dataSets": [
+              {
+                "minAlignmentPeriod": "3600s",
+                "plotType": "STACKED_BAR",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "aggregation": {
+                      "alignmentPeriod": "3600s",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": ["resource.deployed_model_id"],
+                      "perSeriesAligner": "ALIGN_SUM"
+                    },
+                    "filter": "resource.type=\"aiplatform.googleapis.com/Endpoint\" metric.type=\"custom.googleapis.com/vertex_ai/cost_usd\""
+                  }
+                }
+              }
+            ],
+            "yAxis": {
+              "label": "USD",
+              "scale": "LINEAR"
+            }
+          }
+        },
+        {
+          "title": "Traffic Split (Blue/Green)",
+          "pieChart": {
+            "chartType": "DONUT",
+            "dataSets": [
+              {
+                "minAlignmentPeriod": "60s",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": ["resource.deployed_model_id"],
+                      "perSeriesAligner": "ALIGN_RATE"
+                    },
+                    "filter": "resource.type=\"aiplatform.googleapis.com/Endpoint\" metric.type=\"aiplatform.googleapis.com/prediction/prediction_count\""
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "title": "Recent Prediction Logs",
+          "logsPanel": {
+            "resourceNames": [
+              "projects/PROJECT_ID"
+            ],
+            "filter": "resource.type=\"aiplatform.googleapis.com/Endpoint\"\nlogName=\"projects/PROJECT_ID/logs/aiplatform.googleapis.com%2Fprediction\""
+          }
+        },
+        {
+          "title": "Top Error Messages",
+          "scorecard": {
+            "timeSeriesQuery": {
+              "timeSeriesFilter": {
+                "aggregation": {
+                  "alignmentPeriod": "60s",
+                  "crossSeriesReducer": "REDUCE_COUNT",
+                  "groupByFields": ["jsonPayload.error_message"],
+                  "perSeriesAligner": "ALIGN_RATE"
+                },
+                "filter": "resource.type=\"aiplatform.googleapis.com/Endpoint\" severity>=ERROR"
+              }
+            }
+          }
+        },
+        {
+          "title": "Health Check Status",
+          "scorecard": {
+            "sparkChartView": {
+              "sparkChartType": "SPARK_LINE"
+            },
+            "thresholds": [
+              {
+                "color": "RED",
+                "direction": "BELOW",
+                "value": 0.99
+              },
+              {
+                "color": "YELLOW",
+                "direction": "BELOW",
+                "value": 0.999
+              }
+            ],
+            "timeSeriesQuery": {
+              "timeSeriesFilter": {
+                "aggregation": {
+                  "alignmentPeriod": "60s",
+                  "perSeriesAligner": "ALIGN_FRACTION_TRUE"
+                },
+                "filter": "resource.type=\"aiplatform.googleapis.com/Endpoint\" metric.type=\"aiplatform.googleapis.com/prediction/online\""
+              }
+            },
+            "unitOverride": "1"
+          }
+        }
+      ]
+    }
+  },
+  "mosaicLayout": {
+    "columns": 12
+  }
+}

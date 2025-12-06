@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { LogEntry } from "@/components/dashboard/LogEntry";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useLogs } from "@/hooks/use-observability";
+import { observabilityService } from "@/lib/observability-service";
 import {
   Filter,
   Pause,
@@ -11,96 +13,39 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-const mockLogs = [
-  {
-    id: "1",
-    timestamp: "2024-01-15T14:23:45.123Z",
-    level: "info" as const,
-    service: "api-gateway",
-    message: "Incoming request POST /v1/chat/completions from client_id=abc123",
-    traceId: "tr-8f7a6b5c4d3e2f1g",
-  },
-  {
-    id: "2",
-    timestamp: "2024-01-15T14:23:45.234Z",
-    level: "debug" as const,
-    service: "llm-proxy",
-    message: "Routing request to model=gemini-pro, region=us-central1",
-    traceId: "tr-8f7a6b5c4d3e2f1g",
-  },
-  {
-    id: "3",
-    timestamp: "2024-01-15T14:23:45.456Z",
-    level: "info" as const,
-    service: "vertex-ai",
-    message: "Model inference started, input_tokens=128, temperature=0.7",
-    traceId: "tr-8f7a6b5c4d3e2f1g",
-  },
-  {
-    id: "4",
-    timestamp: "2024-01-15T14:23:46.789Z",
-    level: "info" as const,
-    service: "vertex-ai",
-    message: "Model inference completed, output_tokens=256, latency_ms=1333",
-    traceId: "tr-8f7a6b5c4d3e2f1g",
-  },
-  {
-    id: "5",
-    timestamp: "2024-01-15T14:23:46.890Z",
-    level: "warn" as const,
-    service: "safety-checker",
-    message: "Low confidence score detected: 0.45, threshold=0.5, flagged for review",
-    traceId: "tr-8f7a6b5c4d3e2f1g",
-  },
-  {
-    id: "6",
-    timestamp: "2024-01-15T14:23:47.012Z",
-    level: "error" as const,
-    service: "rate-limiter",
-    message: "Rate limit exceeded for client_id=xyz789, requests=1001, limit=1000/min",
-    traceId: "tr-1a2b3c4d5e6f7g8h",
-  },
-  {
-    id: "7",
-    timestamp: "2024-01-15T14:23:47.234Z",
-    level: "info" as const,
-    service: "metrics",
-    message: "Telemetry batch sent to Datadog, events=150, size_kb=45.2",
-  },
-  {
-    id: "8",
-    timestamp: "2024-01-15T14:23:48.456Z",
-    level: "debug" as const,
-    service: "embedding",
-    message: "Computing embedding distance, baseline_dim=768, similarity=0.87",
-    traceId: "tr-9h8g7f6e5d4c3b2a",
-  },
-  {
-    id: "9",
-    timestamp: "2024-01-15T14:23:49.678Z",
-    level: "info" as const,
-    service: "api-gateway",
-    message: "Response sent to client, status=200, response_time_ms=4555",
-    traceId: "tr-8f7a6b5c4d3e2f1g",
-  },
-  {
-    id: "10",
-    timestamp: "2024-01-15T14:23:50.890Z",
-    level: "error" as const,
-    service: "hallucination-detector",
-    message: "Potential hallucination detected: factual_score=0.23, context_match=0.31",
-    traceId: "tr-2b3c4d5e6f7g8h9i",
-  },
-];
-
-const filters = ["All", "info", "warn", "error", "debug"];
+const filters = ["All", "info", "warning", "error", "critical"];
 
 export default function LogStream() {
   const [isStreaming, setIsStreaming] = useState(true);
   const [activeFilter, setActiveFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const { logs, loading } = useLogs(100, isStreaming ? 2000 : 60000);
 
-  const filteredLogs = mockLogs.filter((log) => {
+  // Generate some sample logs on first load if empty
+  useEffect(() => {
+    if (logs.length === 0) {
+      observabilityService.addLog({
+        level: 'info',
+        service: 'observability-hub',
+        message: 'ObservAI Hub initialized successfully',
+        metadata: { version: '1.0.0' },
+      });
+      observabilityService.addLog({
+        level: 'info',
+        service: 'datadog-rum',
+        message: 'Real User Monitoring connected',
+        metadata: { site: 'us5.datadoghq.com' },
+      });
+      observabilityService.addLog({
+        level: 'info',
+        service: 'vertex-ai',
+        message: 'Gemini API client ready',
+        metadata: { model: 'gemini-2.0-flash' },
+      });
+    }
+  }, []);
+
+  const filteredLogs = logs.filter((log) => {
     const matchesFilter = activeFilter === "All" || log.level === activeFilter;
     const matchesSearch =
       searchQuery === "" ||
@@ -108,6 +53,16 @@ export default function LogStream() {
       log.service.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
+
+  // Transform logs for LogEntry component
+  const displayLogs = filteredLogs.map(log => ({
+    id: log.id,
+    timestamp: new Date(log.timestamp).toISOString(),
+    level: log.level === 'warning' ? 'warn' as const : log.level === 'critical' ? 'error' as const : log.level as 'info' | 'debug' | 'warn' | 'error',
+    service: log.service,
+    message: log.message,
+    traceId: log.metadata?.traceId as string | undefined,
+  }));
 
   return (
     <div className="space-y-6">
@@ -202,9 +157,16 @@ export default function LogStream() {
       {/* Log entries */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         <div className="max-h-[600px] overflow-y-auto">
-          {filteredLogs.map((log) => (
-            <LogEntry key={log.id} log={log} />
-          ))}
+          {displayLogs.length > 0 ? (
+            displayLogs.map((log) => (
+              <LogEntry key={log.id} log={log} />
+            ))
+          ) : (
+            <div className="p-8 text-center text-muted-foreground">
+              <RefreshCw className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">No logs yet. Make some AI requests to see live logs.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

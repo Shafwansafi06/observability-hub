@@ -1,0 +1,306 @@
+# ===============================================================================
+# ObservAI Hub - OpenTelemetry Collector Configuration
+# Complete distributed tracing pipeline for LLM applications
+# ===============================================================================
+
+receivers:
+  # OTLP receivers for traces, metrics, and logs
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - "https://*.observai.dev"
+            - "http://localhost:*"
+  
+  # Prometheus receiver for scraping metrics
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'observai-api'
+          scrape_interval: 15s
+          static_configs:
+            - targets: ['api-gateway:9090']
+              labels:
+                service: 'api-gateway'
+                env: 'production'
+        
+        - job_name: 'observai-llm'
+          scrape_interval: 10s
+          static_configs:
+            - targets: ['llm-service:9091']
+              labels:
+                service: 'vertex-ai-proxy'
+                env: 'production'
+        
+        - job_name: 'supabase-edge-functions'
+          scrape_interval: 30s
+          static_configs:
+            - targets: ['edge-functions:9092']
+              labels:
+                service: 'edge-functions'
+                runtime: 'deno'
+                env: 'production'
+  
+  # StatsD receiver for custom metrics
+  statsd:
+    endpoint: 0.0.0.0:8125
+    aggregation_interval: 60s
+    enable_metric_type: true
+    is_monotonic_counter: false
+
+processors:
+  # Batch processor for efficiency
+  batch:
+    timeout: 10s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+  
+  # Memory limiter to prevent OOM
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+    spike_limit_mib: 128
+  
+  # Resource detection
+  resourcedetection:
+    detectors: [env, system, docker, gcp]
+    timeout: 5s
+    override: false
+  
+  # Attributes processor for enrichment
+  attributes:
+    actions:
+      # Add standard attributes
+      - key: observai.version
+        value: "1.0.0"
+        action: insert
+      
+      - key: observai.environment
+        from_attribute: deployment.environment
+        action: insert
+      
+      # Normalize service names
+      - key: service.name
+        action: update
+        from_attribute: service.name
+      
+      # Add cloud provider info
+      - key: cloud.provider
+        value: "gcp"
+        action: insert
+  
+  # LLM-specific span processor
+  span:
+    name:
+      # Extract model name from span
+      to_attributes:
+        rules:
+          - pattern: ^\/api\/v1\/models\/(?P<model_id>[^/]+)\/.*
+            attributes:
+              - key: llm.model.id
+                value: model_id
+          
+          - pattern: ^\/api\/v1\/prompts\/(?P<prompt_id>[^/]+)\/.*
+            attributes:
+              - key: llm.prompt.id
+                value: prompt_id
+    
+    # Status code mapping
+    status:
+      code: OK
+  
+  # Filter processor to reduce noise
+  filter:
+    traces:
+      span:
+        - 'attributes["http.target"] == "/health"'
+        - 'attributes["http.target"] == "/metrics"'
+        - 'attributes["http.target"] == "/favicon.ico"'
+    
+    metrics:
+      metric:
+        - 'name == "process.runtime.go.mem.heap_sys"'
+  
+  # Tail sampling for cost optimization
+  tail_sampling:
+    decision_wait: 10s
+    num_traces: 100
+    expected_new_traces_per_sec: 10
+    policies:
+      # Always sample errors
+      - name: error-sampling
+        type: status_code
+        status_code:
+          status_codes:
+            - ERROR
+      
+      # Always sample slow LLM requests
+      - name: slow-llm-sampling
+        type: latency
+        latency:
+          threshold_ms: 2000
+      
+      # Sample LLM inference traces at higher rate
+      - name: llm-inference-sampling
+        type: string_attribute
+        string_attribute:
+          key: span.kind
+          values:
+            - llm_inference
+            - model_call
+          enabled_regex_matching: true
+          invert_match: false
+        sampling_percentage: 100
+      
+      # Sample hallucination detections
+      - name: hallucination-sampling
+        type: string_attribute
+        string_attribute:
+          key: ai.hallucination.detected
+          values:
+            - "true"
+        sampling_percentage: 100
+      
+      # Sample high-cost requests
+      - name: high-cost-sampling
+        type: numeric_attribute
+        numeric_attribute:
+          key: ai.cost.usd
+          min_value: 0.01
+        sampling_percentage: 100
+      
+      # Probabilistic sampling for normal traffic
+      - name: probabilistic-sampling
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 10
+
+exporters:
+  # Datadog exporter
+  datadog:
+    api:
+      key: ${DD_API_KEY}
+      site: datadoghq.com
+    
+    traces:
+      span_name_as_resource_name: true
+      span_name_remappings:
+        http.request: "{{.http.method}} {{.http.route}}"
+        llm.inference: "{{.llm.model}} inference"
+      
+      # Map OpenTelemetry to Datadog conventions
+      trace_buffer: 500
+    
+    metrics:
+      # Enable delta temporality for Datadog
+      mode: cumulative_to_delta
+      
+      # Metric histograms
+      histograms:
+        mode: distributions
+        send_aggregation_metrics: true
+      
+      # Metric summaries
+      summaries:
+        mode: gauges
+    
+    logs:
+      dump_payloads: false
+    
+    hostname: observai-hub
+    
+    tags:
+      - env:production
+      - service:observai
+      - version:1.0.0
+  
+  # Logging exporter for debugging
+  logging:
+    loglevel: info
+    sampling_initial: 5
+    sampling_thereafter: 200
+  
+  # Prometheus exporter for local metrics
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    namespace: observai
+    send_timestamps: true
+    metric_expiration: 5m
+    resource_to_telemetry_conversion:
+      enabled: true
+
+extensions:
+  # Health check extension
+  health_check:
+    endpoint: 0.0.0.0:13133
+  
+  # PPro extension for profiling
+  pprof:
+    endpoint: 0.0.0.0:1777
+  
+  # ZPages extension for debugging
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+service:
+  extensions: [health_check, pprof, zpages]
+  
+  pipelines:
+    # Traces pipeline
+    traces:
+      receivers: [otlp]
+      processors:
+        - memory_limiter
+        - resourcedetection
+        - attributes
+        - span
+        - filter
+        - tail_sampling
+        - batch
+      exporters: [datadog, logging]
+    
+    # Metrics pipeline
+    metrics:
+      receivers: [otlp, prometheus, statsd]
+      processors:
+        - memory_limiter
+        - resourcedetection
+        - attributes
+        - filter
+        - batch
+      exporters: [datadog, prometheus]
+    
+    # Logs pipeline
+    logs:
+      receivers: [otlp]
+      processors:
+        - memory_limiter
+        - resourcedetection
+        - attributes
+        - batch
+      exporters: [datadog]
+  
+  telemetry:
+    logs:
+      level: info
+      development: false
+      encoding: json
+      output_paths:
+        - stdout
+        - /var/log/otel-collector.log
+      error_output_paths:
+        - stderr
+    
+    metrics:
+      level: detailed
+      address: 0.0.0.0:8888
+
+# ===============================================================================
+# LLM-SPECIFIC METRIC TRANSFORMATIONS
+# ===============================================================================
+# Custom metric processors for LLM telemetry
+# Handled by the span processor and attributes processor above

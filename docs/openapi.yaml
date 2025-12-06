@@ -1,0 +1,1932 @@
+openapi: 3.1.0
+info:
+  title: ObservAI Hub API
+  description: |
+    API for the ObservAI Hub - a comprehensive AI/LLM observability platform.
+    
+    ## Authentication
+    
+    The API supports two authentication methods:
+    
+    1. **JWT Bearer Token** - For user authentication
+       ```
+       Authorization: Bearer <jwt_token>
+       ```
+    
+    2. **API Key** - For programmatic access
+       ```
+       X-API-Key: <api_key>
+       ```
+    
+    ## Rate Limiting
+    
+    - Free tier: 100 requests/minute
+    - Pro tier: 1,000 requests/minute
+    - Enterprise tier: 10,000 requests/minute
+    
+    Rate limit headers:
+    - `X-RateLimit-Limit`: Request limit per window
+    - `X-RateLimit-Remaining`: Remaining requests
+    - `X-RateLimit-Reset`: Reset timestamp (Unix)
+    
+    ## Pagination
+    
+    List endpoints support cursor-based pagination:
+    - `limit`: Number of items (max 100)
+    - `cursor`: Pagination cursor
+    - Response includes `next_cursor` when more data available
+    
+  version: 1.0.0
+  contact:
+    name: ObservAI Support
+    email: support@observai.hub
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.observai.hub/v1
+    description: Production API
+  - url: https://staging-api.observai.hub/v1
+    description: Staging API
+  - url: http://localhost:54321/functions/v1
+    description: Local Development (Supabase)
+
+tags:
+  - name: Authentication
+    description: User authentication and session management
+  - name: Organizations
+    description: Organization management
+  - name: Projects
+    description: Project management
+  - name: Ingest
+    description: Data ingestion endpoints
+  - name: Metrics
+    description: Metrics querying and aggregation
+  - name: LLM Metrics
+    description: LLM-specific metrics
+  - name: Logs
+    description: Log querying and management
+  - name: Alerts
+    description: Alert rules and active alerts
+  - name: Incidents
+    description: Incident management
+  - name: Anomalies
+    description: Anomaly detection results
+  - name: API Keys
+    description: API key management
+
+paths:
+  # ==================== Authentication ====================
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: User login
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: User logout
+      operationId: logout
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Refresh access token
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==================== Organizations ====================
+  /organizations:
+    get:
+      tags: [Organizations]
+      summary: List user organizations
+      operationId: listOrganizations
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of organizations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Organization'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /organizations/{orgId}:
+    get:
+      tags: [Organizations]
+      summary: Get organization details
+      operationId: getOrganization
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgId'
+      responses:
+        '200':
+          description: Organization details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== Projects ====================
+  /organizations/{orgId}/projects:
+    get:
+      tags: [Projects]
+      summary: List organization projects
+      operationId: listProjects
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgId'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, paused, archived]
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Project'
+                  next_cursor:
+                    type: string
+                    nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [Projects]
+      summary: Create a new project
+      operationId: createProject
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectCreate'
+      responses:
+        '201':
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /projects/{projectId}:
+    get:
+      tags: [Projects]
+      summary: Get project details
+      operationId: getProject
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Project details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [Projects]
+      summary: Update project
+      operationId: updateProject
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectUpdate'
+      responses:
+        '200':
+          description: Project updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==================== Ingest ====================
+  /ingest:
+    post:
+      tags: [Ingest]
+      summary: Ingest telemetry data
+      description: |
+        High-throughput endpoint for ingesting metrics, logs, and traces.
+        Supports batch ingestion for optimal performance.
+      operationId: ingest
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IngestPayload'
+      responses:
+        '202':
+          description: Data accepted for processing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accepted:
+                    type: integer
+                    description: Number of items accepted
+                  rejected:
+                    type: integer
+                    description: Number of items rejected
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        index:
+                          type: integer
+                        error:
+                          type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /ingest/metrics:
+    post:
+      tags: [Ingest]
+      summary: Ingest metrics only
+      operationId: ingestMetrics
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [metrics]
+              properties:
+                metrics:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/MetricInput'
+      responses:
+        '202':
+          description: Metrics accepted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /ingest/logs:
+    post:
+      tags: [Ingest]
+      summary: Ingest logs only
+      operationId: ingestLogs
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [logs]
+              properties:
+                logs:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/LogInput'
+      responses:
+        '202':
+          description: Logs accepted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /ingest/llm:
+    post:
+      tags: [Ingest]
+      summary: Ingest LLM metrics
+      operationId: ingestLLM
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [llm_metrics]
+              properties:
+                llm_metrics:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/LLMMetricInput'
+      responses:
+        '202':
+          description: LLM metrics accepted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==================== Metrics ====================
+  /projects/{projectId}/metrics:
+    get:
+      tags: [Metrics]
+      summary: Query metrics
+      operationId: queryMetrics
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: name
+          in: query
+          description: Metric name filter
+          schema:
+            type: string
+        - name: start_time
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: interval
+          in: query
+          description: Aggregation interval
+          schema:
+            type: string
+            enum: ['1m', '5m', '15m', '1h', '6h', '1d']
+            default: '5m'
+        - name: aggregation
+          in: query
+          description: Aggregation function
+          schema:
+            type: string
+            enum: [avg, sum, min, max, count, p50, p95, p99]
+            default: avg
+        - name: group_by
+          in: query
+          description: Group by dimensions
+          schema:
+            type: array
+            items:
+              type: string
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Metrics data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MetricDataPoint'
+                  meta:
+                    type: object
+                    properties:
+                      start_time:
+                        type: string
+                        format: date-time
+                      end_time:
+                        type: string
+                        format: date-time
+                      interval:
+                        type: string
+                      aggregation:
+                        type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /projects/{projectId}/metrics/overview:
+    get:
+      tags: [Metrics]
+      summary: Get metrics overview
+      operationId: getMetricsOverview
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: time_range
+          in: query
+          schema:
+            type: string
+            enum: ['1h', '6h', '24h', '7d', '30d']
+            default: '24h'
+      responses:
+        '200':
+          description: Metrics overview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsOverview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==================== LLM Metrics ====================
+  /projects/{projectId}/llm-metrics:
+    get:
+      tags: [LLM Metrics]
+      summary: Query LLM metrics
+      operationId: queryLLMMetrics
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: model
+          in: query
+          description: Filter by model name
+          schema:
+            type: string
+        - name: provider
+          in: query
+          description: Filter by provider
+          schema:
+            type: string
+        - name: start_time
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: LLM metrics data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LLMMetric'
+                  next_cursor:
+                    type: string
+                    nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /projects/{projectId}/llm-metrics/overview:
+    get:
+      tags: [LLM Metrics]
+      summary: Get LLM metrics overview
+      operationId: getLLMMetricsOverview
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: time_range
+          in: query
+          schema:
+            type: string
+            enum: ['1h', '6h', '24h', '7d', '30d']
+            default: '24h'
+      responses:
+        '200':
+          description: LLM metrics overview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LLMMetricsOverview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /projects/{projectId}/llm-metrics/costs:
+    get:
+      tags: [LLM Metrics]
+      summary: Get LLM cost breakdown
+      operationId: getLLMCosts
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: time_range
+          in: query
+          schema:
+            type: string
+            enum: ['7d', '30d', '90d']
+            default: '30d'
+      responses:
+        '200':
+          description: Cost breakdown
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostBreakdown'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==================== Logs ====================
+  /projects/{projectId}/logs:
+    get:
+      tags: [Logs]
+      summary: Query logs
+      operationId: queryLogs
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: level
+          in: query
+          description: Filter by log level
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [trace, debug, info, warn, error, fatal]
+        - name: search
+          in: query
+          description: Full-text search query
+          schema:
+            type: string
+        - name: trace_id
+          in: query
+          description: Filter by trace ID
+          schema:
+            type: string
+            format: uuid
+        - name: start_time
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Log entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LogEntry'
+                  next_cursor:
+                    type: string
+                    nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /projects/{projectId}/logs/{logId}:
+    get:
+      tags: [Logs]
+      summary: Get log entry details
+      operationId: getLogEntry
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: logId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Log entry details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogEntry'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{projectId}/traces/{traceId}:
+    get:
+      tags: [Logs]
+      summary: Get trace with logs
+      operationId: getTrace
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: traceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Trace with associated logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TraceWithLogs'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== Alerts ====================
+  /projects/{projectId}/alerts:
+    get:
+      tags: [Alerts]
+      summary: Get active alerts
+      operationId: getActiveAlerts
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, acknowledged, resolved]
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [info, warning, critical]
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Active alerts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Alert'
+                  next_cursor:
+                    type: string
+                    nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /projects/{projectId}/alerts/{alertId}/acknowledge:
+    post:
+      tags: [Alerts]
+      summary: Acknowledge an alert
+      operationId: acknowledgeAlert
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: alertId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Alert acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alert'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{projectId}/alert-rules:
+    get:
+      tags: [Alerts]
+      summary: List alert rules
+      operationId: listAlertRules
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: enabled
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Alert rules
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AlertRule'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [Alerts]
+      summary: Create alert rule
+      operationId: createAlertRule
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertRuleCreate'
+      responses:
+        '201':
+          description: Alert rule created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertRule'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /projects/{projectId}/alert-rules/{ruleId}:
+    get:
+      tags: [Alerts]
+      summary: Get alert rule
+      operationId: getAlertRule
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: ruleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Alert rule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertRule'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [Alerts]
+      summary: Update alert rule
+      operationId: updateAlertRule
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: ruleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertRuleUpdate'
+      responses:
+        '200':
+          description: Alert rule updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertRule'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Alerts]
+      summary: Delete alert rule
+      operationId: deleteAlertRule
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: ruleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Alert rule deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== Incidents ====================
+  /projects/{projectId}/incidents:
+    get:
+      tags: [Incidents]
+      summary: List incidents
+      operationId: listIncidents
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, acknowledged, resolved]
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Incidents list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Incident'
+                  next_cursor:
+                    type: string
+                    nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /projects/{projectId}/incidents/{incidentId}:
+    get:
+      tags: [Incidents]
+      summary: Get incident details
+      operationId: getIncident
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: incidentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Incident details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Incident'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{projectId}/incidents/{incidentId}/resolve:
+    post:
+      tags: [Incidents]
+      summary: Resolve an incident
+      operationId: resolveIncident
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: incidentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resolution:
+                  type: string
+                  description: Resolution notes
+      responses:
+        '200':
+          description: Incident resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Incident'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== Anomalies ====================
+  /projects/{projectId}/anomalies:
+    get:
+      tags: [Anomalies]
+      summary: List detected anomalies
+      operationId: listAnomalies
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [new, investigating, confirmed, false_positive, resolved]
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [info, warning, critical]
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Anomalies list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Anomaly'
+                  next_cursor:
+                    type: string
+                    nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==================== API Keys ====================
+  /projects/{projectId}/api-keys:
+    get:
+      tags: [API Keys]
+      summary: List API keys
+      operationId: listApiKeys
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: API keys list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ApiKey'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [API Keys]
+      summary: Create API key
+      operationId: createApiKey
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiKeyCreate'
+      responses:
+        '201':
+          description: API key created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  key:
+                    type: string
+                    description: The full API key (only shown once)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /projects/{projectId}/api-keys/{keyId}/revoke:
+    post:
+      tags: [API Keys]
+      summary: Revoke API key
+      operationId: revokeApiKey
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: API key revoked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  parameters:
+    OrgId:
+      name: orgId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    RateLimited:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds to wait before retry
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        details:
+          type: object
+
+    AuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+        token_type:
+          type: string
+          default: Bearer
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        avatar_url:
+          type: string
+          format: uri
+        role:
+          type: string
+          enum: [owner, admin, member, viewer]
+        organization_id:
+          type: string
+          format: uuid
+
+    Organization:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        tier:
+          type: string
+          enum: [free, pro, enterprise]
+        settings:
+          type: object
+        created_at:
+          type: string
+          format: date-time
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organization_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [active, paused, archived]
+        environments:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              color:
+                type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ProjectCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        environments:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              color:
+                type: string
+
+    ProjectUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        status:
+          type: string
+          enum: [active, paused, archived]
+
+    IngestPayload:
+      type: object
+      properties:
+        metrics:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetricInput'
+        logs:
+          type: array
+          items:
+            $ref: '#/components/schemas/LogInput'
+        llm_metrics:
+          type: array
+          items:
+            $ref: '#/components/schemas/LLMMetricInput'
+        traces:
+          type: array
+          items:
+            $ref: '#/components/schemas/TraceInput'
+
+    MetricInput:
+      type: object
+      required: [name, value]
+      properties:
+        name:
+          type: string
+        value:
+          type: number
+        type:
+          type: string
+          enum: [counter, gauge, histogram]
+          default: gauge
+        unit:
+          type: string
+        tags:
+          type: object
+          additionalProperties:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    LogInput:
+      type: object
+      required: [level, message]
+      properties:
+        level:
+          type: string
+          enum: [trace, debug, info, warn, error, fatal]
+        message:
+          type: string
+        trace_id:
+          type: string
+          format: uuid
+        span_id:
+          type: string
+        attributes:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+
+    LLMMetricInput:
+      type: object
+      required: [model, provider]
+      properties:
+        model:
+          type: string
+        provider:
+          type: string
+        operation_type:
+          type: string
+          enum: [completion, chat, embedding, function_call]
+        input_tokens:
+          type: integer
+        output_tokens:
+          type: integer
+        total_tokens:
+          type: integer
+        latency_ms:
+          type: number
+        cost:
+          type: number
+        status:
+          type: string
+          enum: [success, error]
+        error_type:
+          type: string
+        error_message:
+          type: string
+        trace_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+        session_id:
+          type: string
+        metadata:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+
+    TraceInput:
+      type: object
+      required: [trace_id]
+      properties:
+        trace_id:
+          type: string
+          format: uuid
+        parent_span_id:
+          type: string
+        root_span_id:
+          type: string
+        service_name:
+          type: string
+        operation_name:
+          type: string
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        duration_ms:
+          type: number
+        status:
+          type: string
+          enum: [ok, error]
+
+    MetricDataPoint:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        value:
+          type: number
+        name:
+          type: string
+        tags:
+          type: object
+
+    MetricsOverview:
+      type: object
+      properties:
+        total_requests:
+          type: integer
+        error_rate:
+          type: number
+        avg_latency_ms:
+          type: number
+        p95_latency_ms:
+          type: number
+        trends:
+          type: object
+          additionalProperties:
+            type: number
+            description: Percentage change from previous period
+
+    LLMMetric:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        model:
+          type: string
+        provider:
+          type: string
+        operation_type:
+          type: string
+        input_tokens:
+          type: integer
+        output_tokens:
+          type: integer
+        total_tokens:
+          type: integer
+        latency_ms:
+          type: number
+        cost:
+          type: number
+        status:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    LLMMetricsOverview:
+      type: object
+      properties:
+        total_requests:
+          type: integer
+        total_tokens:
+          type: integer
+        total_cost:
+          type: number
+        avg_latency_ms:
+          type: number
+        error_rate:
+          type: number
+        model_breakdown:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              requests:
+                type: integer
+              tokens:
+                type: integer
+              cost:
+                type: number
+
+    CostBreakdown:
+      type: object
+      properties:
+        total:
+          type: number
+        by_model:
+          type: object
+          additionalProperties:
+            type: number
+        by_day:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              cost:
+                type: number
+        projected_monthly:
+          type: number
+
+    LogEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        level:
+          type: string
+        message:
+          type: string
+        trace_id:
+          type: string
+          format: uuid
+        span_id:
+          type: string
+        attributes:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+
+    TraceWithLogs:
+      type: object
+      properties:
+        trace:
+          type: object
+          properties:
+            trace_id:
+              type: string
+              format: uuid
+            service_name:
+              type: string
+            operation_name:
+              type: string
+            start_time:
+              type: string
+              format: date-time
+            end_time:
+              type: string
+              format: date-time
+            duration_ms:
+              type: number
+            status:
+              type: string
+        logs:
+          type: array
+          items:
+            $ref: '#/components/schemas/LogEntry'
+
+    Alert:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        rule_id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        status:
+          type: string
+          enum: [active, acknowledged, resolved]
+        message:
+          type: string
+        metric_value:
+          type: number
+        threshold_value:
+          type: number
+        triggered_at:
+          type: string
+          format: date-time
+        acknowledged_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    AlertRule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        metric_type:
+          type: string
+        condition:
+          type: object
+          properties:
+            operator:
+              type: string
+              enum: [gt, lt, gte, lte, eq, ne]
+            threshold:
+              type: number
+            aggregation:
+              type: string
+              enum: [avg, sum, min, max, count, p95, p99]
+            window_minutes:
+              type: integer
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        enabled:
+          type: boolean
+        channels:
+          type: array
+          items:
+            type: string
+        cooldown_minutes:
+          type: integer
+        last_triggered_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    AlertRuleCreate:
+      type: object
+      required: [name, metric_type, condition, severity]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        metric_type:
+          type: string
+        condition:
+          type: object
+          required: [operator, threshold]
+          properties:
+            operator:
+              type: string
+              enum: [gt, lt, gte, lte, eq, ne]
+            threshold:
+              type: number
+            aggregation:
+              type: string
+              enum: [avg, sum, min, max, count, p95, p99]
+            window_minutes:
+              type: integer
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        channels:
+          type: array
+          items:
+            type: string
+        cooldown_minutes:
+          type: integer
+          default: 5
+
+    AlertRuleUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        condition:
+          type: object
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        enabled:
+          type: boolean
+        channels:
+          type: array
+          items:
+            type: string
+        cooldown_minutes:
+          type: integer
+
+    Incident:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        alert_rule_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        status:
+          type: string
+          enum: [open, acknowledged, resolved]
+        occurrence_count:
+          type: integer
+        first_occurrence_at:
+          type: string
+          format: date-time
+        last_occurrence_at:
+          type: string
+          format: date-time
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    Anomaly:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        anomaly_type:
+          type: string
+        detection_method:
+          type: string
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        confidence_score:
+          type: number
+        metric_name:
+          type: string
+        observed_value:
+          type: number
+        expected_value:
+          type: number
+        deviation_score:
+          type: number
+        status:
+          type: string
+          enum: [new, investigating, confirmed, false_positive, resolved]
+        detected_at:
+          type: string
+          format: date-time
+
+    ApiKey:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        prefix:
+          type: string
+          description: First 8 characters of the key
+        permissions:
+          type: array
+          items:
+            type: string
+        rate_limit:
+          type: integer
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+        revoked:
+          type: boolean
+
+    ApiKeyCreate:
+      type: object
+      required: [name, permissions]
+      properties:
+        name:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+            enum: [ingest, read:metrics, read:logs, read:alerts, write:alerts]
+        expires_at:
+          type: string
+          format: date-time
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []

@@ -1,0 +1,496 @@
+# Vertex AI Monitoring & Alerting Configuration
+
+## Cloud Monitoring Dashboards
+
+### 1. LLM Inference Dashboard
+
+```yaml
+displayName: "Vertex AI - LLM Inference Metrics"
+mosaicLayout:
+  columns: 12
+  tiles:
+    # Request Rate
+    - width: 6
+      height: 4
+      widget:
+        title: "Prediction Requests per Minute"
+        xyChart:
+          dataSets:
+            - timeSeriesQuery:
+                timeSeriesFilter:
+                  filter: |
+                    resource.type="aiplatform.googleapis.com/Endpoint"
+                    metric.type="aiplatform.googleapis.com/prediction/online/prediction_count"
+                  aggregation:
+                    alignmentPeriod: "60s"
+                    perSeriesAligner: "ALIGN_RATE"
+                    crossSeriesReducer: "REDUCE_SUM"
+                    groupByFields:
+                      - "resource.endpoint_id"
+              plotType: "LINE"
+          yAxis:
+            label: "Requests/min"
+            scale: "LINEAR"
+    
+    # Latency P50, P95, P99
+    - xPos: 6
+      width: 6
+      height: 4
+      widget:
+        title: "Prediction Latency (Percentiles)"
+        xyChart:
+          dataSets:
+            - timeSeriesQuery:
+                timeSeriesFilter:
+                  filter: |
+                    resource.type="aiplatform.googleapis.com/Endpoint"
+                    metric.type="aiplatform.googleapis.com/prediction/online/prediction_latencies"
+                  aggregation:
+                    alignmentPeriod: "60s"
+                    perSeriesAligner: "ALIGN_DELTA"
+                    crossSeriesReducer: "REDUCE_PERCENTILE_50"
+              plotType: "LINE"
+              legendTemplate: "P50"
+            - timeSeriesQuery:
+                timeSeriesFilter:
+                  filter: |
+                    resource.type="aiplatform.googleapis.com/Endpoint"
+                    metric.type="aiplatform.googleapis.com/prediction/online/prediction_latencies"
+                  aggregation:
+                    alignmentPeriod: "60s"
+                    perSeriesAligner: "ALIGN_DELTA"
+                    crossSeriesReducer: "REDUCE_PERCENTILE_95"
+              plotType: "LINE"
+              legendTemplate: "P95"
+            - timeSeriesQuery:
+                timeSeriesFilter:
+                  filter: |
+                    resource.type="aiplatform.googleapis.com/Endpoint"
+                    metric.type="aiplatform.googleapis.com/prediction/online/prediction_latencies"
+                  aggregation:
+                    alignmentPeriod: "60s"
+                    perSeriesAligner: "ALIGN_DELTA"
+                    crossSeriesReducer: "REDUCE_PERCENTILE_99"
+              plotType: "LINE"
+              legendTemplate: "P99"
+          yAxis:
+            label: "Latency (ms)"
+            scale: "LINEAR"
+    
+    # Error Rate
+    - yPos: 4
+      width: 6
+      height: 4
+      widget:
+        title: "Error Rate (%)"
+        xyChart:
+          dataSets:
+            - timeSeriesQuery:
+                timeSeriesFilter:
+                  filter: |
+                    resource.type="aiplatform.googleapis.com/Endpoint"
+                    metric.type="aiplatform.googleapis.com/prediction/online/error_count"
+                  aggregation:
+                    alignmentPeriod: "60s"
+                    perSeriesAligner: "ALIGN_RATE"
+              plotType: "LINE"
+          yAxis:
+            label: "Errors/min"
+            scale: "LINEAR"
+    
+    # Replica Count
+    - xPos: 6
+      yPos: 4
+      width: 6
+      height: 4
+      widget:
+        title: "Active Replicas"
+        xyChart:
+          dataSets:
+            - timeSeriesQuery:
+                timeSeriesFilter:
+                  filter: |
+                    resource.type="aiplatform.googleapis.com/Endpoint"
+                    metric.type="aiplatform.googleapis.com/prediction/online/replicas"
+                  aggregation:
+                    alignmentPeriod: "60s"
+                    perSeriesAligner: "ALIGN_MEAN"
+              plotType: "STACKED_AREA"
+          yAxis:
+            label: "Replicas"
+            scale: "LINEAR"
+    
+    # CPU Utilization
+    - yPos: 8
+      width: 4
+      height: 4
+      widget:
+        title: "CPU Utilization (%)"
+        xyChart:
+          dataSets:
+            - timeSeriesQuery:
+                timeSeriesFilter:
+                  filter: |
+                    resource.type="aiplatform.googleapis.com/Endpoint"
+                    metric.type="aiplatform.googleapis.com/prediction/online/cpu/utilization"
+                  aggregation:
+                    alignmentPeriod: "60s"
+                    perSeriesAligner: "ALIGN_MEAN"
+              plotType: "LINE"
+          yAxis:
+            label: "CPU %"
+            scale: "LINEAR"
+    
+    # Memory Utilization
+    - xPos: 4
+      yPos: 8
+      width: 4
+      height: 4
+      widget:
+        title: "Memory Utilization (%)"
+        xyChart:
+          dataSets:
+            - timeSeriesQuery:
+                timeSeriesFilter:
+                  filter: |
+                    resource.type="aiplatform.googleapis.com/Endpoint"
+                    metric.type="aiplatform.googleapis.com/prediction/online/memory/utilization"
+                  aggregation:
+                    alignmentPeriod: "60s"
+                    perSeriesAligner: "ALIGN_MEAN"
+              plotType: "LINE"
+          yAxis:
+            label: "Memory %"
+            scale: "LINEAR"
+    
+    # GPU Utilization (if applicable)
+    - xPos: 8
+      yPos: 8
+      width: 4
+      height: 4
+      widget:
+        title: "GPU Utilization (%)"
+        xyChart:
+          dataSets:
+            - timeSeriesQuery:
+                timeSeriesFilter:
+                  filter: |
+                    resource.type="aiplatform.googleapis.com/Endpoint"
+                    metric.type="aiplatform.googleapis.com/prediction/online/accelerator/duty_cycle"
+                  aggregation:
+                    alignmentPeriod: "60s"
+                    perSeriesAligner: "ALIGN_MEAN"
+              plotType: "LINE"
+          yAxis:
+            label: "GPU %"
+            scale: "LINEAR"
+```
+
+## Alert Policies
+
+### 1. High Latency Alert (P95 > 1000ms)
+
+```yaml
+displayName: "Vertex AI - High Prediction Latency"
+documentation:
+  content: |
+    Prediction latency (P95) exceeded 1000ms for 2 consecutive minutes.
+    
+    **Impact**: Degraded user experience, potential timeouts
+    
+    **Runbook**:
+    1. Check endpoint metrics in Cloud Console
+    2. Verify replica count is scaling appropriately
+    3. Check for upstream dependency issues
+    4. Consider increasing min_replica_count or machine_type
+    
+    **Dashboard**: https://console.cloud.google.com/monitoring/dashboards
+  mimeType: "text/markdown"
+conditions:
+  - displayName: "P95 Latency > 1000ms"
+    conditionThreshold:
+      filter: |
+        resource.type="aiplatform.googleapis.com/Endpoint"
+        metric.type="aiplatform.googleapis.com/prediction/online/prediction_latencies"
+      aggregations:
+        - alignmentPeriod: "60s"
+          perSeriesAligner: "ALIGN_DELTA"
+          crossSeriesReducer: "REDUCE_PERCENTILE_95"
+      comparison: "COMPARISON_GT"
+      thresholdValue: 1000
+      duration: "120s"
+combiner: "OR"
+enabled: true
+notificationChannels:
+  - "projects/PROJECT_ID/notificationChannels/CHANNEL_ID"
+alertStrategy:
+  autoClose: "1800s"
+severity: "WARNING"
+```
+
+### 2. High Error Rate Alert (> 5%)
+
+```yaml
+displayName: "Vertex AI - High Error Rate"
+documentation:
+  content: |
+    Prediction error rate exceeded 5% for 2 consecutive minutes.
+    
+    **Impact**: Service degradation, failed predictions
+    
+    **Runbook**:
+    1. Check Cloud Logging for error details
+    2. Verify model deployment health
+    3. Check for resource exhaustion (CPU, memory, GPU)
+    4. Review recent deployments for regressions
+    
+    **Query Logs**: 
+    resource.type="aiplatform.googleapis.com/Endpoint"
+    severity>=ERROR
+conditions:
+  - displayName: "Error Rate > 5%"
+    conditionThreshold:
+      filter: |
+        resource.type="aiplatform.googleapis.com/Endpoint"
+        metric.type="aiplatform.googleapis.com/prediction/online/error_count"
+      aggregations:
+        - alignmentPeriod: "60s"
+          perSeriesAligner: "ALIGN_RATE"
+      comparison: "COMPARISON_GT"
+      thresholdValue: 0.05
+      duration: "120s"
+combiner: "OR"
+enabled: true
+notificationChannels:
+  - "projects/PROJECT_ID/notificationChannels/CHANNEL_ID"
+alertStrategy:
+  autoClose: "1800s"
+severity: "CRITICAL"
+```
+
+### 3. Low Replica Count Alert (< 2)
+
+```yaml
+displayName: "Vertex AI - Low Replica Count"
+documentation:
+  content: |
+    Endpoint replica count dropped below 2.
+    
+    **Impact**: Reduced availability, single point of failure
+    
+    **Runbook**:
+    1. Check for scaling issues in Cloud Console
+    2. Verify autoscaling configuration
+    3. Check for resource quotas
+    4. Review health check failures
+conditions:
+  - displayName: "Replicas < 2"
+    conditionThreshold:
+      filter: |
+        resource.type="aiplatform.googleapis.com/Endpoint"
+        metric.type="aiplatform.googleapis.com/prediction/online/replicas"
+      aggregations:
+        - alignmentPeriod: "60s"
+          perSeriesAligner: "ALIGN_MEAN"
+      comparison: "COMPARISON_LT"
+      thresholdValue: 2
+      duration: "180s"
+combiner: "OR"
+enabled: true
+notificationChannels:
+  - "projects/PROJECT_ID/notificationChannels/CHANNEL_ID"
+alertStrategy:
+  autoClose: "900s"
+severity: "CRITICAL"
+```
+
+### 4. Resource Utilization Alert (CPU > 90%)
+
+```yaml
+displayName: "Vertex AI - High CPU Utilization"
+documentation:
+  content: |
+    CPU utilization exceeded 90% for 5 minutes.
+    
+    **Impact**: Performance degradation, potential throttling
+    
+    **Runbook**:
+    1. Check if autoscaling is working
+    2. Consider increasing max_replica_count
+    3. Evaluate upgrading to larger machine type
+    4. Review workload patterns for optimization opportunities
+conditions:
+  - displayName: "CPU > 90%"
+    conditionThreshold:
+      filter: |
+        resource.type="aiplatform.googleapis.com/Endpoint"
+        metric.type="aiplatform.googleapis.com/prediction/online/cpu/utilization"
+      aggregations:
+        - alignmentPeriod: "60s"
+          perSeriesAligner: "ALIGN_MEAN"
+      comparison: "COMPARISON_GT"
+      thresholdValue: 0.9
+      duration: "300s"
+combiner: "OR"
+enabled: true
+notificationChannels:
+  - "projects/PROJECT_ID/notificationChannels/CHANNEL_ID"
+alertStrategy:
+  autoClose: "1800s"
+severity: "WARNING"
+```
+
+### 5. Endpoint Down Alert
+
+```yaml
+displayName: "Vertex AI - Endpoint Unavailable"
+documentation:
+  content: |
+    Endpoint has no healthy replicas.
+    
+    **Impact**: Complete service outage
+    
+    **Runbook**:
+    1. IMMEDIATE: Failover to backup region if configured
+    2. Check endpoint status in Cloud Console
+    3. Review recent deployments for issues
+    4. Check Cloud Logging for crash loops or OOM errors
+    5. Contact Google Cloud Support if persistent
+conditions:
+  - displayName: "No Healthy Replicas"
+    conditionThreshold:
+      filter: |
+        resource.type="aiplatform.googleapis.com/Endpoint"
+        metric.type="aiplatform.googleapis.com/prediction/online/replicas"
+      aggregations:
+        - alignmentPeriod: "60s"
+          perSeriesAligner: "ALIGN_MEAN"
+      comparison: "COMPARISON_LT"
+      thresholdValue: 1
+      duration: "120s"
+combiner: "OR"
+enabled: true
+notificationChannels:
+  - "projects/PROJECT_ID/notificationChannels/PAGERDUTY_CHANNEL"
+alertStrategy:
+  autoClose: "900s"
+severity: "CRITICAL"
+```
+
+## Log-based Metrics
+
+### Custom Metric: Model Accuracy Drift
+
+```yaml
+name: "vertex_ai_model_accuracy_drift"
+description: "Tracks model accuracy drift over time"
+filter: |
+  resource.type="aiplatform.googleapis.com/Endpoint"
+  jsonPayload.prediction.confidence<0.7
+metricDescriptor:
+  metricKind: "DELTA"
+  valueType: "INT64"
+  unit: "1"
+  labels:
+    - key: "endpoint_id"
+      valueType: "STRING"
+      description: "Vertex AI endpoint ID"
+    - key: "model_version"
+      valueType: "STRING"
+      description: "Model version"
+labelExtractors:
+  endpoint_id: "EXTRACT(resource.labels.endpoint_id)"
+  model_version: "EXTRACT(jsonPayload.model_version)"
+```
+
+## SLO Configuration
+
+### Availability SLO (99.9%)
+
+```yaml
+serviceLevelObjective:
+  displayName: "Vertex AI Endpoint Availability"
+  goal: 0.999
+  rollingPeriod: "30d"
+  serviceLevelIndicator:
+    requestBased:
+      goodTotalRatio:
+        goodServiceFilter: |
+          resource.type="aiplatform.googleapis.com/Endpoint"
+          metric.type="aiplatform.googleapis.com/prediction/online/response_count"
+          metric.labels.response_code!="5xx"
+        totalServiceFilter: |
+          resource.type="aiplatform.googleapis.com/Endpoint"
+          metric.type="aiplatform.googleapis.com/prediction/online/response_count"
+```
+
+### Latency SLO (95% < 500ms)
+
+```yaml
+serviceLevelObjective:
+  displayName: "Vertex AI Endpoint Latency"
+  goal: 0.95
+  rollingPeriod: "30d"
+  serviceLevelIndicator:
+    requestBased:
+      distributionCut:
+        distributionFilter: |
+          resource.type="aiplatform.googleapis.com/Endpoint"
+          metric.type="aiplatform.googleapis.com/prediction/online/prediction_latencies"
+        range:
+          min: 0
+          max: 500
+```
+
+## Notification Channels
+
+### Slack
+
+```bash
+gcloud alpha monitoring channels create \
+  --display-name="Slack - ML Team" \
+  --type=slack \
+  --channel-labels=url=https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
+```
+
+### Email
+
+```bash
+gcloud alpha monitoring channels create \
+  --display-name="Email - On-Call" \
+  --type=email \
+  --channel-labels=email_address=oncall@example.com
+```
+
+### PagerDuty
+
+```bash
+gcloud alpha monitoring channels create \
+  --display-name="PagerDuty - Critical" \
+  --type=pagerduty \
+  --channel-labels=service_key=YOUR_PAGERDUTY_SERVICE_KEY
+```
+
+## Uptime Checks
+
+```yaml
+displayName: "Vertex AI Endpoint Health Check"
+monitoredResource:
+  type: "uptime_url"
+  labels:
+    project_id: "PROJECT_ID"
+    host: "REGION-aiplatform.googleapis.com"
+httpCheck:
+  path: "/v1/projects/PROJECT_ID/locations/REGION/endpoints/ENDPOINT_ID"
+  port: 443
+  useSsl: true
+  validateSsl: true
+period: "60s"
+timeout: "10s"
+selectedRegions:
+  - "USA"
+  - "EUROPE"
+  - "ASIA_PACIFIC"
+```
+
+This comprehensive monitoring setup provides complete visibility into your Vertex AI endpoints with proactive alerting for all critical metrics.

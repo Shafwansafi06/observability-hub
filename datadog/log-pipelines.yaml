@@ -1,0 +1,422 @@
+# ===============================================================================
+# ObservAI Hub - Datadog Log Pipelines Configuration
+# Custom log processing for LLM telemetry
+# ===============================================================================
+# This file documents the log pipelines to be created in Datadog UI or via API
+# ===============================================================================
+
+pipelines:
+  
+  # ============================================================================
+  # PIPELINE 1: LLM Inference Logs
+  # ============================================================================
+  - name: "LLM Inference Processing"
+    filter:
+      query: "source:llm service:vertex-ai"
+    
+    processors:
+      # Parse JSON log structure
+      - type: "grok-parser"
+        name: "Parse LLM JSON"
+        enabled: true
+        source: "message"
+        samples:
+          - '{"request_id":"uuid-123","model":"gemini-pro","prompt_tokens":128,"response_tokens":256,"latency_ms":1234,"confidence":0.91}'
+        grok:
+          supportRules: ""
+          matchRules: |
+            llm_json %{data:json_data:json}
+      
+      # Extract and remap key fields
+      - type: "attribute-remapper"
+        name: "Remap request_id"
+        enabled: true
+        sources: ["json_data.request_id"]
+        target: "request_id"
+        target_type: "attribute"
+        preserve_source: false
+        override_on_conflict: true
+      
+      - type: "attribute-remapper"
+        name: "Remap model name"
+        enabled: true
+        sources: ["json_data.model"]
+        target: "llm.model"
+        target_type: "attribute"
+        preserve_source: false
+        override_on_conflict: true
+      
+      - type: "attribute-remapper"
+        name: "Remap prompt tokens"
+        enabled: true
+        sources: ["json_data.prompt_tokens"]
+        target: "ai.prompt.tokens"
+        target_type: "attribute"
+        preserve_source: false
+        override_on_conflict: true
+      
+      - type: "attribute-remapper"
+        name: "Remap response tokens"
+        enabled: true
+        sources: ["json_data.response_tokens"]
+        target: "ai.response.tokens"
+        target_type: "attribute"
+        preserve_source: false
+        override_on_conflict: true
+      
+      - type: "attribute-remapper"
+        name: "Remap latency"
+        enabled: true
+        sources: ["json_data.latency_ms"]
+        target: "duration"
+        target_type: "attribute"
+        preserve_source: false
+        override_on_conflict: true
+      
+      - type: "attribute-remapper"
+        name: "Remap confidence score"
+        enabled: true
+        sources: ["json_data.confidence"]
+        target: "ai.confidence"
+        target_type: "attribute"
+        preserve_source: false
+        override_on_conflict: true
+      
+      # Calculate total tokens
+      - type: "arithmetic-processor"
+        name: "Calculate total tokens"
+        enabled: true
+        expression: "ai.prompt.tokens + ai.response.tokens"
+        target: "ai.total_tokens"
+        is_replace_missing: false
+      
+      # Category processor for model types
+      - type: "category-processor"
+        name: "Categorize model type"
+        enabled: true
+        categories:
+          - filter:
+              query: "@llm.model:gemini-*"
+            name: "Gemini"
+          - filter:
+              query: "@llm.model:text-bison*"
+            name: "Text Bison"
+          - filter:
+              query: "@llm.model:chat-bison*"
+            name: "Chat Bison"
+          - filter:
+              query: "@llm.model:*"
+            name: "Other"
+        target: "llm.model_family"
+      
+      # Status remapper for errors
+      - type: "status-remapper"
+        name: "Map log status"
+        enabled: true
+        sources: ["level", "status", "severity"]
+      
+      # Trace ID remapper
+      - type: "trace-id-remapper"
+        name: "Map trace ID"
+        enabled: true
+        sources: ["trace_id", "traceId", "dd.trace_id"]
+  
+  # ============================================================================
+  # PIPELINE 2: Hallucination Detection Logs
+  # ============================================================================
+  - name: "Hallucination Detection Processing"
+    filter:
+      query: "service:observai-safety @safety_flag.type:HALLUCINATION*"
+    
+    processors:
+      - type: "grok-parser"
+        name: "Parse hallucination event"
+        enabled: true
+        source: "message"
+        grok:
+          supportRules: ""
+          matchRules: |
+            hallucination_json %{data:json_data:json}
+      
+      - type: "attribute-remapper"
+        name: "Remap hallucination score"
+        enabled: true
+        sources: ["json_data.safety_flag.score", "hallucination_score"]
+        target: "ai.hallucination.score"
+        target_type: "attribute"
+        preserve_source: false
+        override_on_conflict: true
+      
+      - type: "attribute-remapper"
+        name: "Remap evidence distance"
+        enabled: true
+        sources: ["json_data.prompt_embedding_distance_to_baseline", "embedding_distance"]
+        target: "ai.embedding.distance"
+        target_type: "attribute"
+        preserve_source: false
+        override_on_conflict: true
+      
+      # Set severity to WARN for hallucination events
+      - type: "status-remapper"
+        name: "Set hallucination severity"
+        enabled: true
+        sources: ["severity"]
+      
+      # Generate metric from hallucination logs
+      - type: "generate-metrics"
+        name: "Count hallucinations"
+        enabled: true
+        metric_name: "ai.hallucination.count"
+        metric_type: "count"
+        tags:
+          - "model:@llm.model"
+          - "severity:@ai.hallucination.score"
+  
+  # ============================================================================
+  # PIPELINE 3: API Gateway Logs
+  # ============================================================================
+  - name: "API Gateway Processing"
+    filter:
+      query: "service:api-gateway"
+    
+    processors:
+      # Parse access logs
+      - type: "grok-parser"
+        name: "Parse API access log"
+        enabled: true
+        source: "message"
+        samples:
+          - 'POST /api/v1/models/gemini-pro/infer 200 1234ms user=user_123 org=org_456'
+        grok:
+          supportRules: |
+            _method %{word:http.method}
+            _url %{notSpace:http.url}
+            _status %{integer:http.status_code}
+            _duration %{integer:duration}ms
+            _user user=%{notSpace:usr.id}
+            _org org=%{notSpace:organization.id}
+          matchRules: |
+            api_access %{_method} %{_url} %{_status} %{_duration} %{_user} %{_org}
+      
+      - type: "url-parser"
+        name: "Parse URL"
+        enabled: true
+        sources: ["http.url"]
+        target: "http.url_details"
+      
+      - type: "user-agent-parser"
+        name: "Parse user agent"
+        enabled: true
+        sources: ["http.useragent"]
+        target: "http.useragent_details"
+        is_encoded: false
+      
+      # Generate latency metrics
+      - type: "generate-metrics"
+        name: "API latency distribution"
+        enabled: true
+        metric_name: "api.request.duration"
+        metric_type: "distribution"
+        tags:
+          - "http.method:@http.method"
+          - "http.status_code:@http.status_code"
+          - "endpoint:@http.url_details.path"
+  
+  # ============================================================================
+  # PIPELINE 4: Cost Tracking Logs
+  # ============================================================================
+  - name: "Cost Tracking Processing"
+    filter:
+      query: "service:billing @event_type:cost_calculation"
+    
+    processors:
+      - type: "grok-parser"
+        name: "Parse cost event"
+        enabled: true
+        source: "message"
+        grok:
+          matchRules: |
+            cost_json %{data:json_data:json}
+      
+      - type: "attribute-remapper"
+        name: "Remap cost"
+        enabled: true
+        sources: ["json_data.cost_usd"]
+        target: "billing.cost_usd"
+        target_type: "attribute"
+        preserve_source: false
+        override_on_conflict: true
+      
+      - type: "arithmetic-processor"
+        name: "Calculate tokens per dollar"
+        enabled: true
+        expression: "ai.total_tokens / billing.cost_usd"
+        target: "billing.tokens_per_dollar"
+        is_replace_missing: false
+      
+      # Generate cost metrics
+      - type: "generate-metrics"
+        name: "Track API costs"
+        enabled: true
+        metric_name: "billing.api_cost.usd"
+        metric_type: "distribution"
+        tags:
+          - "model:@llm.model"
+          - "organization:@organization.id"
+          - "project:@project.id"
+  
+  # ============================================================================
+  # PIPELINE 5: Safety & Security Logs
+  # ============================================================================
+  - name: "Safety & Security Processing"
+    filter:
+      query: "service:observai-safety OR @safety_flag.type:*"
+    
+    processors:
+      - type: "grok-parser"
+        name: "Parse safety event"
+        enabled: true
+        source: "message"
+        grok:
+          matchRules: |
+            safety_json %{data:json_data:json}
+      
+      - type: "category-processor"
+        name: "Categorize safety events"
+        enabled: true
+        categories:
+          - filter:
+              query: "@json_data.safety_flag.type:PII"
+            name: "PII Detection"
+          - filter:
+              query: "@json_data.safety_flag.type:TOXICITY"
+            name: "Toxicity"
+          - filter:
+              query: "@json_data.safety_flag.type:HALLUCINATION_PRED"
+            name: "Hallucination Risk"
+          - filter:
+              query: "@json_data.safety_flag.type:PROMPT_INJECTION"
+            name: "Prompt Injection"
+        target: "security.event_category"
+      
+      # Set high severity for security events
+      - type: "status-remapper"
+        name: "Elevate security event severity"
+        enabled: true
+        sources: ["severity"]
+      
+      # Generate security metrics
+      - type: "generate-metrics"
+        name: "Count security events"
+        enabled: true
+        metric_name: "security.event.count"
+        metric_type: "count"
+        tags:
+          - "category:@security.event_category"
+          - "type:@json_data.safety_flag.type"
+
+# ===============================================================================
+# LOG FACETS CONFIGURATION
+# ===============================================================================
+# Create these facets in Datadog UI for better filtering and analytics
+
+facets:
+  # LLM-specific facets
+  - name: "LLM Model"
+    path: "llm.model"
+    type: "string"
+    group: "LLM"
+  
+  - name: "Model Family"
+    path: "llm.model_family"
+    type: "string"
+    group: "LLM"
+  
+  - name: "Prompt Tokens"
+    path: "ai.prompt.tokens"
+    type: "integer"
+    group: "LLM"
+    unit: "token"
+  
+  - name: "Response Tokens"
+    path: "ai.response.tokens"
+    type: "integer"
+    group: "LLM"
+    unit: "token"
+  
+  - name: "Total Tokens"
+    path: "ai.total_tokens"
+    type: "integer"
+    group: "LLM"
+    unit: "token"
+  
+  - name: "Model Confidence"
+    path: "ai.confidence"
+    type: "double"
+    group: "LLM"
+  
+  - name: "Hallucination Score"
+    path: "ai.hallucination.score"
+    type: "double"
+    group: "Safety"
+  
+  - name: "Embedding Distance"
+    path: "ai.embedding.distance"
+    type: "double"
+    group: "LLM"
+  
+  - name: "API Cost (USD)"
+    path: "billing.cost_usd"
+    type: "double"
+    group: "Billing"
+    unit: "dollar"
+  
+  # User & Organization facets
+  - name: "User ID"
+    path: "usr.id"
+    type: "string"
+    group: "User"
+  
+  - name: "Organization ID"
+    path: "organization.id"
+    type: "string"
+    group: "Organization"
+  
+  - name: "Project ID"
+    path: "project.id"
+    type: "string"
+    group: "Organization"
+  
+  # Security facets
+  - name: "Security Event Category"
+    path: "security.event_category"
+    type: "string"
+    group: "Security"
+  
+  - name: "Safety Flag Type"
+    path: "safety_flag.type"
+    type: "string"
+    group: "Safety"
+
+# ===============================================================================
+# EXCLUSION FILTERS
+# ===============================================================================
+# Configure in Datadog UI to reduce log volume and costs
+
+exclusion_filters:
+  - name: "Exclude health checks"
+    query: "@http.url_details.path:(/health OR /healthz OR /ping)"
+    enabled: true
+  
+  - name: "Exclude metrics endpoints"
+    query: "@http.url_details.path:(/metrics OR /prometheus)"
+    enabled: true
+  
+  - name: "Exclude successful OPTIONS requests"
+    query: "@http.method:OPTIONS @http.status_code:200"
+    enabled: true
+  
+  - name: "Sample debug logs"
+    query: "status:debug"
+    enabled: true
+    sample_rate: 0.1  # Keep only 10% of debug logs

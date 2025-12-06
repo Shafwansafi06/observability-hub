@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "lib": ["ESNext", "DOM"],
+    "moduleResolution": "bundler",
+    "strict": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "allowJs": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "baseUrl": ".",
+    "paths": {
+      "https://deno.land/std@0.177.0/http/server.ts": ["./deno.d.ts"],
+      "https://esm.sh/@supabase/supabase-js@2": ["./deno.d.ts"],
+      "https://esm.sh/@supabase/supabase-js@2.39.0": ["./deno.d.ts"],
+      "https://deno.land/x/zod@v3.22.4/mod.ts": ["./deno.d.ts"]
+    }
+  },
+  "include": [
+    "./**/*.ts",
+    "./deno.d.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

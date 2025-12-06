@@ -1,0 +1,470 @@
+{
+  "title": "ObservAI - LLM Overview Dashboard",
+  "description": "Comprehensive overview of LLM application health, performance, and safety metrics",
+  "widgets": [
+    {
+      "id": 0,
+      "definition": {
+        "type": "note",
+        "content": "# 🧠 ObservAI LLM Observability\n\n**Real-time monitoring for AI-powered applications**\n\nThis dashboard provides end-to-end visibility into your LLM infrastructure, from user requests to model inference and safety checks.\n\n---\n\n### Quick Links\n- [Hallucination Detection](#hallucination)\n- [Cost Analysis](#cost)\n- [Performance Metrics](#performance)\n- [Security Events](#security)",
+        "background_color": "vivid_blue",
+        "font_size": "14",
+        "text_align": "left",
+        "show_tick": false,
+        "tick_pos": "50%",
+        "tick_edge": "left"
+      },
+      "layout": {
+        "x": 0,
+        "y": 0,
+        "width": 12,
+        "height": 2
+      }
+    },
+    {
+      "id": 1,
+      "definition": {
+        "type": "query_value",
+        "requests": [
+          {
+            "q": "sum:ai.requests.count{env:production}.as_count()",
+            "aggregator": "sum"
+          }
+        ],
+        "title": "Total Requests (24h)",
+        "title_size": "16",
+        "title_align": "left",
+        "precision": 0,
+        "custom_links": []
+      },
+      "layout": {
+        "x": 0,
+        "y": 2,
+        "width": 3,
+        "height": 2
+      }
+    },
+    {
+      "id": 2,
+      "definition": {
+        "type": "query_value",
+        "requests": [
+          {
+            "q": "avg:ai.model.latency{env:production}",
+            "aggregator": "avg"
+          }
+        ],
+        "title": "Avg Latency (P50)",
+        "title_size": "16",
+        "title_align": "left",
+        "precision": 0,
+        "autoscale": true,
+        "custom_unit": "ms"
+      },
+      "layout": {
+        "x": 3,
+        "y": 2,
+        "width": 3,
+        "height": 2
+      }
+    },
+    {
+      "id": 3,
+      "definition": {
+        "type": "query_value",
+        "requests": [
+          {
+            "q": "sum:ai.total_tokens{env:production}.as_count()",
+            "aggregator": "sum"
+          }
+        ],
+        "title": "Total Tokens (24h)",
+        "title_size": "16",
+        "title_align": "left",
+        "precision": 0,
+        "autoscale": true
+      },
+      "layout": {
+        "x": 6,
+        "y": 2,
+        "width": 3,
+        "height": 2
+      }
+    },
+    {
+      "id": 4,
+      "definition": {
+        "type": "query_value",
+        "requests": [
+          {
+            "q": "sum:ai.requests.errors{env:production}.as_rate()",
+            "aggregator": "sum"
+          }
+        ],
+        "title": "Error Rate",
+        "title_size": "16",
+        "title_align": "left",
+        "precision": 2,
+        "autoscale": true,
+        "custom_unit": "%",
+        "conditional_formats": [
+          {
+            "comparator": ">",
+            "value": 5,
+            "palette": "red_on_white"
+          },
+          {
+            "comparator": ">",
+            "value": 2,
+            "palette": "yellow_on_white"
+          },
+          {
+            "comparator": "<=",
+            "value": 2,
+            "palette": "green_on_white"
+          }
+        ]
+      },
+      "layout": {
+        "x": 9,
+        "y": 2,
+        "width": 3,
+        "height": 2
+      }
+    },
+    {
+      "id": 5,
+      "definition": {
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "sum:ai.requests.count{env:production} by {llm.model}.as_rate()",
+            "display_type": "area",
+            "style": {
+              "palette": "dog_classic",
+              "line_type": "solid",
+              "line_width": "normal"
+            }
+          }
+        ],
+        "title": "Request Rate by Model",
+        "title_size": "16",
+        "title_align": "left",
+        "show_legend": true,
+        "legend_layout": "auto",
+        "legend_columns": ["avg", "min", "max", "value", "sum"],
+        "time": {},
+        "yaxis": {
+          "label": "",
+          "scale": "linear",
+          "min": "auto",
+          "max": "auto",
+          "include_zero": true
+        },
+        "markers": []
+      },
+      "layout": {
+        "x": 0,
+        "y": 4,
+        "width": 6,
+        "height": 3
+      }
+    },
+    {
+      "id": 6,
+      "definition": {
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "avg:ai.model.latency{env:production} by {llm.model}",
+            "display_type": "line",
+            "style": {
+              "palette": "warm",
+              "line_type": "solid",
+              "line_width": "normal"
+            }
+          }
+        ],
+        "title": "Model Latency (P95)",
+        "title_size": "16",
+        "title_align": "left",
+        "show_legend": true,
+        "legend_layout": "auto",
+        "yaxis": {
+          "label": "",
+          "scale": "linear",
+          "min": "auto",
+          "max": "auto",
+          "include_zero": true
+        },
+        "markers": [
+          {
+            "value": "y = 2000",
+            "display_type": "error dashed",
+            "label": "SLA Threshold"
+          }
+        ]
+      },
+      "layout": {
+        "x": 6,
+        "y": 4,
+        "width": 6,
+        "height": 3
+      }
+    },
+    {
+      "id": 7,
+      "definition": {
+        "type": "note",
+        "content": "## 🎯 Model Confidence & Safety",
+        "background_color": "gray",
+        "font_size": "16",
+        "text_align": "center",
+        "show_tick": true,
+        "tick_pos": "50%",
+        "tick_edge": "bottom"
+      },
+      "layout": {
+        "x": 0,
+        "y": 7,
+        "width": 12,
+        "height": 1
+      }
+    },
+    {
+      "id": 8,
+      "definition": {
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "avg:ai.confidence{env:production} by {llm.model}",
+            "display_type": "line",
+            "style": {
+              "palette": "purple",
+              "line_type": "solid",
+              "line_width": "normal"
+            }
+          }
+        ],
+        "title": "Model Confidence Score",
+        "title_size": "16",
+        "title_align": "left",
+        "show_legend": true,
+        "yaxis": {
+          "label": "Confidence",
+          "scale": "linear",
+          "min": "0",
+          "max": "1",
+          "include_zero": true
+        },
+        "markers": [
+          {
+            "value": "y = 0.7",
+            "display_type": "warning dashed",
+            "label": "Min Acceptable"
+          }
+        ]
+      },
+      "layout": {
+        "x": 0,
+        "y": 8,
+        "width": 6,
+        "height": 3
+      }
+    },
+    {
+      "id": 9,
+      "definition": {
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "sum:ai.hallucination.count{env:production}.as_count()",
+            "display_type": "bars",
+            "style": {
+              "palette": "warm",
+              "line_type": "solid",
+              "line_width": "normal"
+            }
+          }
+        ],
+        "title": "Hallucination Detections",
+        "title_size": "16",
+        "title_align": "left",
+        "show_legend": false,
+        "yaxis": {
+          "label": "Count",
+          "scale": "linear",
+          "min": "auto",
+          "max": "auto",
+          "include_zero": true
+        }
+      },
+      "layout": {
+        "x": 6,
+        "y": 8,
+        "width": 6,
+        "height": 3
+      }
+    },
+    {
+      "id": 10,
+      "definition": {
+        "type": "toplist",
+        "requests": [
+          {
+            "q": "top(sum:ai.total_tokens{env:production} by {llm.model}.as_count(), 10, 'sum', 'desc')",
+            "conditional_formats": [
+              {
+                "comparator": ">",
+                "value": 1000000,
+                "palette": "white_on_red"
+              },
+              {
+                "comparator": ">",
+                "value": 500000,
+                "palette": "white_on_yellow"
+              },
+              {
+                "comparator": "<=",
+                "value": 500000,
+                "palette": "white_on_green"
+              }
+            ]
+          }
+        ],
+        "title": "Top Models by Token Usage",
+        "title_size": "16",
+        "title_align": "left"
+      },
+      "layout": {
+        "x": 0,
+        "y": 11,
+        "width": 4,
+        "height": 3
+      }
+    },
+    {
+      "id": 11,
+      "definition": {
+        "type": "query_table",
+        "requests": [
+          {
+            "q": "sum:billing.api_cost.usd{env:production} by {llm.model,organization.id}",
+            "aggregator": "sum",
+            "limit": 10,
+            "order": "desc",
+            "alias": "Cost (USD)"
+          }
+        ],
+        "title": "Cost by Model & Organization",
+        "title_size": "16",
+        "title_align": "left"
+      },
+      "layout": {
+        "x": 4,
+        "y": 11,
+        "width": 4,
+        "height": 3
+      }
+    },
+    {
+      "id": 12,
+      "definition": {
+        "type": "heatmap",
+        "requests": [
+          {
+            "q": "avg:ai.embedding.distance{env:production} by {llm.model}"
+          }
+        ],
+        "title": "Embedding Distance Heatmap (Drift Detection)",
+        "title_size": "16",
+        "title_align": "left",
+        "yaxis": {
+          "label": "",
+          "scale": "linear",
+          "min": "auto",
+          "max": "auto",
+          "include_zero": true
+        }
+      },
+      "layout": {
+        "x": 8,
+        "y": 11,
+        "width": 4,
+        "height": 3
+      }
+    },
+    {
+      "id": 13,
+      "definition": {
+        "type": "log_stream",
+        "query": "@safety_flag.type:* env:production",
+        "columns": ["host", "service", "@llm.model", "@safety_flag.type", "@ai.hallucination.score"],
+        "title": "Recent Safety Events",
+        "title_size": "16",
+        "title_align": "left",
+        "message_display": "expanded-md",
+        "show_date_column": true,
+        "show_message_column": true,
+        "sort": {
+          "column": "time",
+          "order": "desc"
+        }
+      },
+      "layout": {
+        "x": 0,
+        "y": 14,
+        "width": 12,
+        "height": 4
+      }
+    }
+  ],
+  "template_variables": [
+    {
+      "name": "env",
+      "default": "production",
+      "prefix": "env"
+    },
+    {
+      "name": "model",
+      "default": "*",
+      "prefix": "llm.model"
+    },
+    {
+      "name": "organization",
+      "default": "*",
+      "prefix": "organization.id"
+    }
+  ],
+  "layout_type": "ordered",
+  "is_read_only": false,
+  "notify_list": [],
+  "template_variable_presets": [
+    {
+      "name": "Production - All Models",
+      "template_variables": [
+        {
+          "name": "env",
+          "value": "production"
+        },
+        {
+          "name": "model",
+          "value": "*"
+        }
+      ]
+    },
+    {
+      "name": "Production - Gemini Only",
+      "template_variables": [
+        {
+          "name": "env",
+          "value": "production"
+        },
+        {
+          "name": "model",
+          "value": "gemini-*"
+        }
+      ]
+    }
+  ]
+}

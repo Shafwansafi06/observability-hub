@@ -172,7 +172,7 @@ export function HeroSectionApple({
           {/* Main Title */}
           <h1 
             className={cn(
-              "text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-6",
+              "text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-6 mt-4",
               "transition-all duration-1000 delay-200 ease-out",
               isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
             )}
@@ -197,7 +197,7 @@ export function HeroSectionApple({
           {/* Description */}
           <p 
             className={cn(
-              "text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10",
+              "text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 mt-32",
               "transition-all duration-1000 delay-400 ease-out",
               isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
             )}
@@ -262,18 +262,18 @@ export function HeroSectionApple({
               </div>
             ))}
           </div>
-        </div>
 
-        {/* Scroll indicator */}
-        <div 
-          className={cn(
-            "absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2",
-            "transition-all duration-1000 delay-1000 ease-out",
-            isLoaded ? "opacity-100" : "opacity-0"
-          )}
-        >
-          <span className="text-xs text-muted-foreground">Scroll to explore</span>
-          <ChevronDown className="w-5 h-5 text-muted-foreground animate-bounce" />
+          {/* Scroll indicator */}
+          <div 
+            className={cn(
+              "flex flex-col items-center gap-2 mt-12",
+              "transition-all duration-1000 delay-1000 ease-out",
+              isLoaded ? "opacity-100" : "opacity-0"
+            )}
+          >
+            <span className="text-xs text-muted-foreground">Scroll to explore</span>
+            <ChevronDown className="w-5 h-5 text-muted-foreground animate-bounce" />
+          </div>
         </div>
       </div>
 

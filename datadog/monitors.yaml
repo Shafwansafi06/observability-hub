@@ -1,0 +1,515 @@
+# ===============================================================================
+# ObservAI Hub - Datadog Monitors Configuration
+# AI-specific anomaly detection and alerting
+# ===============================================================================
+# Apply these monitors using Datadog API or Terraform
+# ===============================================================================
+
+monitors:
+  
+  # ============================================================================
+  # 1. HALLUCINATION DETECTION MONITOR
+  # ============================================================================
+  - name: "[LLM] High Hallucination Risk Detected"
+    type: "metric alert"
+    query: |
+      avg(last_5m):avg:ai.hallucination.score{env:production} by {llm.model} > 0.6
+    message: |
+      ## 🚨 High Hallucination Risk Detected
+      
+      **Model**: {{llm.model.name}}
+      **Average Hallucination Score**: {{value}}
+      **Threshold**: 0.6
+      
+      ### Impact
+      The model is generating responses with low factual reliability. This could lead to:
+      - Incorrect information being served to users
+      - Compliance and trust issues
+      - Potential legal liability
+      
+      ### Investigation Steps
+      1. Check recent prompts in [Log Explorer](<datadog link>)
+      2. Review [APM trace](<datadog link>) for the affected requests
+      3. Compare embeddings distance to baseline
+      4. Verify if this is domain-specific or general
+      
+      ### Immediate Actions
+      - [ ] Review last 10 requests: `request_id:{{request_id.name}}`
+      - [ ] Check if temperature is too high (>0.8)
+      - [ ] Verify if prompt includes proper context/grounding
+      - [ ] Consider rolling back to previous model version
+      
+      ### Runbook
+      https://docs.observai.dev/runbooks/hallucination-detection
+      
+      @slack-observai-oncall @pagerduty-ai-team
+    
+    tags:
+      - "service:vertex-ai"
+      - "team:ai"
+      - "severity:high"
+      - "category:safety"
+    
+    priority: 1  # P1
+    
+    options:
+      notify_no_data: false
+      no_data_timeframe: 20
+      renotify_interval: 60
+      escalation_message: |
+        🔴 **ESCALATION**: Hallucination risk still high after 1 hour.
+        Senior AI engineer review required.
+      
+      thresholds:
+        critical: 0.6
+        warning: 0.4
+      
+      require_full_window: false
+      notify_audit: true
+      include_tags: true
+  
+  # ============================================================================
+  # 2. HIGH LATENCY MONITOR
+  # ============================================================================
+  - name: "[LLM] Model Inference Latency High"
+    type: "metric alert"
+    query: |
+      avg(last_5m):p95:ai.model.latency{env:production} by {llm.model} > 2000
+    message: |
+      ## ⚠️  High Model Latency Detected
+      
+      **Model**: {{llm.model.name}}
+      **P95 Latency**: {{value}}ms
+      **Threshold**: 2000ms (2s)
+      
+      ### Impact
+      - Poor user experience
+      - Potential timeouts
+      - Increased infrastructure costs
+      
+      ### Quick Checks
+      ```
+      @llm.model:{{llm.model.name}} @duration:>2000
+      ```
+      
+      ### Possible Causes
+      1. Model overload / resource contention
+      2. Vertex AI API throttling
+      3. Large prompt/response sizes
+      4. Network issues to GCP
+      5. Cold start issues
+      
+      ### Mitigation
+      - Scale up model replicas
+      - Enable request batching
+      - Implement circuit breaker
+      - Route to fallback model
+      
+      @slack-observai-performance
+    
+    tags:
+      - "service:vertex-ai"
+      - "team:platform"
+      - "severity:medium"
+      - "category:performance"
+    
+    priority: 2  # P2
+    
+    options:
+      thresholds:
+        critical: 2000
+        warning: 1500
+      
+      notify_no_data: false
+      evaluation_delay: 60  # Wait 60s before evaluating
+  
+  # ============================================================================
+  # 3. TOKEN QUOTA / COST SPIKE MONITOR
+  # ============================================================================
+  - name: "[LLM] Unusual Token Usage Spike"
+    type: "anomaly"
+    query: |
+      avg(last_1h):sum:ai.total_tokens{env:production} by {organization.id}
+    message: |
+      ## 💸 Unusual Token Usage Spike Detected
+      
+      **Organization**: {{organization.id.name}}
+      **Token Rate**: {{value}} tokens/hour
+      **Baseline**: {{baseline}} tokens/hour
+      **Deviation**: {{deviation}}σ
+      
+      ### Impact
+      - Unexpected cost increase
+      - Possible abuse or misconfiguration
+      - Quota exhaustion risk
+      
+      ### Investigation
+      1. Check top users: `organization.id:{{organization.id.name}} | top usr.id`
+      2. Review recent API calls
+      3. Look for repeat patterns or loops
+      4. Verify if this is legitimate traffic spike
+      
+      ### Actions
+      - [ ] Review billing dashboard
+      - [ ] Check for infinite loops or retries
+      - [ ] Contact customer if suspicious
+      - [ ] Apply rate limits if needed
+      
+      @slack-observai-billing @email-finance-team@observai.dev
+    
+    tags:
+      - "service:api-gateway"
+      - "team:billing"
+      - "severity:high"
+      - "category:cost"
+    
+    priority: 2
+    
+    options:
+      thresholds:
+        critical: 3.0  # 3 standard deviations
+        warning: 2.0
+        critical_recovery: 2.5
+        warning_recovery: 1.5
+      
+      threshold_windows:
+        trigger_window: "last_1h"
+        recovery_window: "last_15m"
+  
+  # ============================================================================
+  # 4. PROMPT INJECTION DETECTION
+  # ============================================================================
+  - name: "[Security] Prompt Injection Attempt Detected"
+    type: "log alert"
+    query: |
+      logs("service:observai-safety @safety_flag.type:PROMPT_INJECTION").index("main").rollup("count").last("5m") >= 1
+    message: |
+      ## 🛡️  Prompt Injection Attempt Detected
+      
+      **Count**: {{value}} attempts in last 5 minutes
+      **Service**: {{service.name}}
+      
+      ### Details
+      Potentially malicious prompt injection detected. This could be an attempt to:
+      - Bypass safety filters
+      - Extract system prompts
+      - Manipulate model behavior
+      - Exfiltrate data
+      
+      ### Investigation
+      ```
+      @safety_flag.type:PROMPT_INJECTION @usr.id:*
+      ```
+      
+      ### Immediate Actions
+      1. Review the prompts in [Log Explorer](<link>)
+      2. Check user's recent activity
+      3. Block user if confirmed malicious
+      4. Update prompt injection patterns
+      
+      ### Runbook
+      https://docs.observai.dev/security/prompt-injection
+      
+      @slack-security-alerts @pagerduty-security
+    
+    tags:
+      - "service:observai-safety"
+      - "team:security"
+      - "severity:critical"
+      - "category:security"
+    
+    priority: 1
+    
+    options:
+      enable_logs_sample: true
+      notify_no_data: false
+      renotify_interval: 0  # Don't renotify
+      escalation_message: "Security incident requires immediate attention"
+  
+  # ============================================================================
+  # 5. PII / DATA LEAKAGE DETECTION
+  # ============================================================================
+  - name: "[Security] PII Detected in Model Response"
+    type: "log alert"
+    query: |
+      logs("service:vertex-ai @safety_flag.type:PII").index("main").rollup("count").last("5m") > 5
+    message: |
+      ## 🔒 PII Detected in Model Responses
+      
+      **Count**: {{value}} instances
+      **Time Window**: Last 5 minutes
+      
+      ### Risk Level: HIGH
+      Model is potentially leaking personally identifiable information (PII):
+      - Email addresses
+      - Phone numbers
+      - Social security numbers
+      - Credit card numbers
+      
+      ### Immediate Actions
+      1. **DO NOT** log full responses
+      2. Review redacted samples
+      3. Identify source of PII in training data
+      4. Notify affected users per GDPR/CCPA
+      
+      ### Mitigation
+      - Enable aggressive PII filtering
+      - Review model fine-tuning data
+      - Implement response sanitization
+      
+      @slack-security-critical @pagerduty-compliance
+    
+    tags:
+      - "service:vertex-ai"
+      - "team:compliance"
+      - "severity:critical"
+      - "category:privacy"
+    
+    priority: 1
+  
+  # ============================================================================
+  # 6. MODEL DRIFT DETECTION
+  # ============================================================================
+  - name: "[LLM] Model Drift Detected"
+    type: "metric alert"
+    query: |
+      avg(last_30m):avg:ai.embedding.distance{env:production} by {llm.model} > 0.3
+    message: |
+      ## 📉 Model Drift Detected
+      
+      **Model**: {{llm.model.name}}
+      **Embedding Distance**: {{value}}
+      **Baseline**: 0.1
+      **Drift**: {{drift_percentage}}%
+      
+      ### What This Means
+      The model's output embeddings are diverging from the established baseline.
+      This could indicate:
+      - Concept drift in input data
+      - Model degradation
+      - Training data distribution shift
+      - Need for model retraining
+      
+      ### Investigation Steps
+      1. Compare recent embeddings to historical baseline
+      2. Analyze input prompt distribution changes
+      3. Review model performance metrics
+      4. Check if upstream data sources changed
+      
+      ### Recommended Actions
+      - [ ] Collect sample data for retraining
+      - [ ] Schedule model evaluation
+      - [ ] Consider triggering retraining pipeline
+      - [ ] Update baseline if drift is legitimate
+      
+      @slack-ml-ops @email-ml-team@observai.dev
+    
+    tags:
+      - "service:vertex-ai"
+      - "team:ml-ops"
+      - "severity:medium"
+      - "category:model-health"
+    
+    priority: 3
+  
+  # ============================================================================
+  # 7. ERROR RATE SPIKE
+  # ============================================================================
+  - name: "[LLM] High Error Rate"
+    type: "metric alert"
+    query: |
+      avg(last_10m):sum:ai.requests.errors{env:production} by {llm.model}.as_rate() > 0.05
+    message: |
+      ## ❌ High Error Rate Detected
+      
+      **Model**: {{llm.model.name}}
+      **Error Rate**: {{value}}% ({{error_count}} errors)
+      **Threshold**: 5%
+      
+      ### Common Causes
+      - Vertex AI API issues
+      - Invalid prompts
+      - Quota exceeded
+      - Model deployment issues
+      - Network connectivity problems
+      
+      ### Quick Actions
+      ```
+      @llm.model:{{llm.model.name}} status:error
+      ```
+      
+      @slack-observai-oncall
+    
+    tags:
+      - "service:vertex-ai"
+      - "team:reliability"
+      - "severity:high"
+      - "category:availability"
+    
+    priority: 2
+    
+    options:
+      thresholds:
+        critical: 0.05  # 5%
+        warning: 0.02   # 2%
+  
+  # ============================================================================
+  # 8. STREAMING DISRUPTIONS
+  # ============================================================================
+  - name: "[LLM] High Streaming Failure Rate"
+    type: "metric alert"
+    query: |
+      avg(last_15m):sum:ai.streaming.failures{env:production}.as_rate() / sum:ai.streaming.requests{env:production}.as_rate() > 0.1
+    message: |
+      ## 🌊 Streaming Failures Detected
+      
+      **Failure Rate**: {{value}}%
+      **Threshold**: 10%
+      
+      ### Impact
+      - Users experiencing incomplete responses
+      - Poor real-time experience
+      - Potential data loss
+      
+      ### Investigation
+      - Check WebSocket connections
+      - Review network stability
+      - Verify Vertex AI streaming endpoints
+      - Check client-side timeout configs
+      
+      @slack-observai-platform
+    
+    tags:
+      - "service:api-gateway"
+      - "team:platform"
+      - "severity:medium"
+      - "category:streaming"
+    
+    priority: 2
+  
+  # ============================================================================
+  # 9. SUPABASE CONNECTION HEALTH
+  # ============================================================================
+  - name: "[Infrastructure] Supabase Connection Issues"
+    type: "service check"
+    query: |
+      "datadog.agent.check_status".over("check:supabase_connection").by("*").last(2).count_by_status()
+    message: |
+      ## 🔌 Supabase Connection Issues
+      
+      **Status**: {{check.status}}
+      **Check**: Supabase Connection
+      
+      ### Impact
+      - Cannot persist telemetry data
+      - Risk of data loss
+      - Dashboard data may be stale
+      
+      ### Actions
+      1. Check Supabase dashboard status
+      2. Verify network connectivity
+      3. Review connection pool settings
+      4. Enable backup buffer if available
+      
+      @slack-observai-infra @pagerduty-infrastructure
+    
+    tags:
+      - "service:supabase"
+      - "team:infrastructure"
+      - "severity:critical"
+      - "category:database"
+    
+    priority: 1
+  
+  # ============================================================================
+  # 10. COMPOSITE MONITOR: CRITICAL SYSTEM HEALTH
+  # ============================================================================
+  - name: "[System] ObservAI Critical Health Check"
+    type: "composite"
+    query: |
+      a && (b || c)
+    
+    # a = Supabase is down
+    # b = High error rate
+    # c = High hallucination rate
+    
+    message: |
+      ## 🚨 CRITICAL: Multiple System Issues Detected
+      
+      ObservAI is experiencing multiple critical issues simultaneously.
+      This requires immediate senior engineer attention.
+      
+      ### Affected Components
+      {{#is_alert}}
+      - Supabase: {{supabase_status}}
+      - Error Rate: {{error_rate}}%
+      - Hallucination Rate: {{hallucination_rate}}
+      {{/is_alert}}
+      
+      ### War Room
+      Join incident channel: #incident-{{incident_id}}
+      
+      @pagerduty-critical @slack-leadership
+    
+    tags:
+      - "service:observai"
+      - "team:sre"
+      - "severity:critical"
+      - "category:system"
+    
+    priority: 1
+
+# ===============================================================================
+# MONITOR TAGS FOR ORGANIZATION
+# ===============================================================================
+common_tags:
+  - "environment:production"
+  - "platform:gcp"
+  - "project:observai-hub"
+  - "monitored_by:datadog"
+
+# ===============================================================================
+# NOTIFICATION CHANNELS
+# ===============================================================================
+notification_channels:
+  slack:
+    - name: "observai-oncall"
+      channel: "#observai-oncall"
+      mentions: ["@here"]
+    
+    - name: "observai-performance"
+      channel: "#performance-alerts"
+    
+    - name: "observai-security"
+      channel: "#security-alerts"
+      mentions: ["@security-team"]
+    
+    - name: "observai-billing"
+      channel: "#billing-alerts"
+  
+  pagerduty:
+    - name: "ai-team"
+      integration_key: "${PAGERDUTY_AI_TEAM_KEY}"
+    
+    - name: "security"
+      integration_key: "${PAGERDUTY_SECURITY_KEY}"
+    
+    - name: "infrastructure"
+      integration_key: "${PAGERDUTY_INFRA_KEY}"
+  
+  email:
+    - "oncall@observai.dev"
+    - "security@observai.dev"
+    - "finance-team@observai.dev"
+
+# ===============================================================================
+# DOWNTIME SCHEDULES
+# ===============================================================================
+# Suppress alerts during maintenance windows
+downtimes:
+  - scope: "env:staging"
+    recurrence:
+      type: "weeks"
+      period: 1
+      week_days: ["Sat", "Sun"]
+    message: "Maintenance window - staging environment"
