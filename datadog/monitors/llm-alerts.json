@@ -1,0 +1,142 @@
+{
+  "monitors": [
+    {
+      "name": "🚨 High LLM Latency Spike",
+      "type": "rum alert",
+      "query": "avg(last_5m):avg:@action.llm.latency_ms{@type:action,@action.target.name:llm_inference} > 5000",
+      "message": "## High LLM Latency Detected\n\n**Alert**: Average LLM inference latency exceeded 5000ms in the last 5 minutes.\n\n**Impact**: Users experiencing slow responses from AI features.\n\n**Possible Causes**:\n- Vertex AI API performance degradation\n- Network latency to Google Cloud\n- Model cold start issues\n- Large prompt/response sizes\n\n**Recommended Actions**:\n1. Check Vertex AI status page\n2. Review recent prompt sizes\n3. Check network connectivity\n4. Consider model warm-up strategies\n\n**Dashboard**: [View LLM Metrics](https://app.datadoghq.com/dashboard/llm-observability)\n\n@slack-alerts @pagerduty-critical",
+      "tags": ["service:observai-hub", "alert:latency", "severity:high"],
+      "options": {
+        "thresholds": {
+          "critical": 5000,
+          "warning": 3000
+        },
+        "notify_no_data": false,
+        "notify_audit": true,
+        "require_full_window": false,
+        "include_tags": true,
+        "new_group_delay": 60,
+        "evaluation_delay": 60
+      },
+      "priority": 2
+    },
+    {
+      "name": "💰 Token Usage Anomaly",
+      "type": "rum alert",
+      "query": "avg(last_15m):avg:@action.llm.tokens.total{@type:action,@action.target.name:llm_inference} > 50000",
+      "message": "## Abnormal Token Usage Detected\n\n**Alert**: Average token usage exceeded 50,000 per request in the last 15 minutes.\n\n**Impact**: Unexpected cost increase, possible prompt abuse.\n\n**Possible Causes**:\n- Malicious user sending extremely long prompts\n- Application bug generating large requests\n- API abuse or scraping attempt\n\n**Recommended Actions**:\n1. Investigate recent requests with high token counts\n2. Check for suspicious user patterns\n3. Review rate limiting configuration\n4. Implement prompt length validation\n\n**Cost Impact**: This could significantly increase your Vertex AI bill.\n\n@slack-alerts @security-team",
+      "tags": ["service:observai-hub", "alert:cost", "severity:high"],
+      "options": {
+        "thresholds": {
+          "critical": 50000,
+          "warning": 30000
+        },
+        "notify_no_data": false,
+        "require_full_window": true,
+        "evaluation_delay": 60
+      },
+      "priority": 2
+    },
+    {
+      "name": "🔥 LLM Error Rate Spike",
+      "type": "rum alert",
+      "query": "sum(last_10m):sum:@action.llm.success{@type:action,@action.target.name:llm_inference,@action.llm.success:false}.as_count() / sum:@action.llm.success{@type:action,@action.target.name:llm_inference}.as_count() > 0.1",
+      "message": "## High LLM Error Rate\n\n**Alert**: LLM error rate exceeded 10% in the last 10 minutes.\n\n**Impact**: Significant portion of AI requests are failing.\n\n**Common Error Types**:\n- Quota exceeded\n- Network timeouts\n- Model unavailable\n- Authentication errors\n\n**Immediate Actions**:\n1. Check Vertex AI quota status\n2. Review error logs for patterns\n3. Verify API key validity\n4. Check service health dashboard\n\n**Traces**: [View Recent Errors](https://app.datadoghq.com/apm/traces?query=@action.llm.success:false)\n\n@slack-alerts @pagerduty-critical @sre-team",
+      "tags": ["service:observai-hub", "alert:errors", "severity:critical"],
+      "options": {
+        "thresholds": {
+          "critical": 0.1,
+          "warning": 0.05
+        },
+        "notify_no_data": false,
+        "require_full_window": true,
+        "evaluation_delay": 60
+      },
+      "priority": 1
+    },
+    {
+      "name": "🛡️ Suspicious Prompt Pattern Detected",
+      "type": "log alert",
+      "query": "logs(\"service:security-monitor security.event_type:suspicious_prompt\").index(\"*\").rollup(\"count\").last(\"5m\") > 10",
+      "message": "## Suspicious Prompt Activity\n\n**Alert**: Multiple suspicious prompts detected in the last 5 minutes.\n\n**Security Concern**: Potential prompt injection, jailbreak attempts, or abuse.\n\n**Detected Patterns**:\n- Extremely long prompts (>10,000 chars)\n- Known injection patterns\n- Repeated failed attempts\n\n**Immediate Actions**:\n1. Review recent prompts from flagged users\n2. Check for repeated patterns from same IP\n3. Consider temporary rate limiting\n4. Update prompt validation rules\n\n**User Impact**: May need to block or throttle suspicious accounts.\n\n@security-team @slack-security",
+      "tags": ["service:observai-hub", "alert:security", "severity:high"],
+      "options": {
+        "thresholds": {
+          "critical": 10,
+          "warning": 5
+        },
+        "notify_no_data": false,
+        "require_full_window": false,
+        "evaluation_delay": 60
+      },
+      "priority": 2
+    },
+    {
+      "name": "🤖 Model Unavailable",
+      "type": "rum alert",
+      "query": "sum(last_5m):sum:@action.llm.error_type{@type:action,@action.target.name:llm_inference,@action.llm.error_type:model_error}.as_count() > 5",
+      "message": "## Vertex AI Model Unavailable\n\n**Alert**: Multiple requests failed with model errors in the last 5 minutes.\n\n**Impact**: AI features are completely or partially unavailable.\n\n**Possible Causes**:\n- Vertex AI service outage\n- Model deprecation\n- Region unavailability\n- Authentication issues\n\n**Immediate Actions**:\n1. Check Vertex AI status page: https://status.cloud.google.com/\n2. Verify model name and version\n3. Test with fallback model\n4. Enable failover to alternative LLM provider\n\n**Fallback Strategy**: Consider switching to backup model.\n\n@pagerduty-critical @sre-team @slack-alerts",
+      "tags": ["service:observai-hub", "alert:availability", "severity:critical"],
+      "options": {
+        "thresholds": {
+          "critical": 5
+        },
+        "notify_no_data": false,
+        "require_full_window": false,
+        "evaluation_delay": 60
+      },
+      "priority": 1
+    },
+    {
+      "name": "☣️ High Toxicity Content Detected",
+      "type": "rum alert",
+      "query": "avg(last_10m):avg:@action.llm.quality.toxicity_score{@type:action,@action.target.name:llm_inference} > 0.5",
+      "message": "## High Toxicity Score in LLM Outputs\n\n**Alert**: LLM responses showing elevated toxicity scores.\n\n**Content Safety Concern**: Model generating potentially harmful or toxic content.\n\n**Average Toxicity**: {{value}} (threshold: 0.5)\n\n**Immediate Actions**:\n1. Review recent high-toxicity responses\n2. Check if prompts are manipulating model\n3. Enable stricter content filtering\n4. Consider adjusting model temperature\n5. Implement post-processing filters\n\n**User Impact**: May need to block certain responses or prompts.\n\n@content-moderation-team @security-team",
+      "tags": ["service:observai-hub", "alert:content-safety", "severity:high"],
+      "options": {
+        "thresholds": {
+          "critical": 0.5,
+          "warning": 0.3
+        },
+        "notify_no_data": false,
+        "require_full_window": true,
+        "evaluation_delay": 60
+      },
+      "priority": 2
+    },
+    {
+      "name": "🎭 High Hallucination Risk",
+      "type": "rum alert",
+      "query": "avg(last_15m):avg:@action.llm.quality.hallucination_risk{@type:action,@action.target.name:llm_inference} > 0.7",
+      "message": "## Elevated Hallucination Risk Detected\n\n**Alert**: LLM responses showing high hallucination probability.\n\n**ML Quality Issue**: Model may be generating factually incorrect or ungrounded information.\n\n**Risk Score**: {{value}} (threshold: 0.7)\n\n**Possible Causes**:\n- Prompts requesting factual information without context\n- Model generating claims without sources\n- Temperature too high for factual queries\n\n**Recommended Actions**:\n1. Review prompts triggering high hallucination risk\n2. Implement fact-checking pipeline\n3. Add source attribution requirements\n4. Lower temperature for factual queries\n5. Enable retrieval-augmented generation (RAG)\n\n**User Impact**: Incorrect information could harm user trust.\n\n@ml-team @product-team",
+      "tags": ["service:observai-hub", "alert:ml-quality", "severity:medium"],
+      "options": {
+        "thresholds": {
+          "critical": 0.7,
+          "warning": 0.5
+        },
+        "notify_no_data": false,
+        "require_full_window": true,
+        "evaluation_delay": 120
+      },
+      "priority": 3
+    },
+    {
+      "name": "💸 Daily Cost Threshold Exceeded",
+      "type": "rum alert",
+      "query": "sum(last_1d):sum:@action.llm.cost_usd{@type:action,@action.target.name:llm_inference} > 100",
+      "message": "## Daily LLM Cost Budget Exceeded\n\n**Alert**: Vertex AI costs exceeded $100 in the last 24 hours.\n\n**Budget Impact**: Daily spending limit reached.\n\n**Total Cost**: ${{value}}\n\n**Cost Breakdown by Model**:\n- Check dashboard for per-model costs\n- Review high-token requests\n\n**Immediate Actions**:\n1. Review cost attribution dashboard\n2. Check for unexpected usage patterns\n3. Identify cost-heavy users or features\n4. Consider implementing stricter rate limits\n5. Optimize prompt engineering to reduce tokens\n\n**Budget Alert**: Consider adjusting quotas or optimizing usage.\n\n@finance-team @engineering-leads",
+      "tags": ["service:observai-hub", "alert:cost", "severity:medium"],
+      "options": {
+        "thresholds": {
+          "critical": 100,
+          "warning": 75
+        },
+        "notify_no_data": false,
+        "require_full_window": true,
+        "evaluation_delay": 300
+      },
+      "priority": 3
+    }
+  ]
+}

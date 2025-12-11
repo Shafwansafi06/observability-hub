@@ -6,6 +6,12 @@
 import { supabase } from './supabaseClient';
 import { datadogRum } from '@datadog/browser-rum';
 import { vertexAI } from './vertex-ai/client';
+import { 
+  trackLLMRequestAPM, 
+  trackSupabaseOperation,
+  trackSecurityEvent,
+  trackMLQualityMetrics 
+} from './datadog-apm';
 
 // Types for observability data
 export interface MetricsSummary {
@@ -120,7 +126,7 @@ function persistMetrics() {
 }
 
 /**
- * Track an LLM request
+ * Track an LLM request with full APM instrumentation
  */
 export function trackLLMRequest(data: {
   latency: number;
@@ -128,10 +134,18 @@ export function trackLLMRequest(data: {
   success: boolean;
   model: string;
   error?: string;
+  prompt?: string;
+  response?: string;
+  temperature?: number;
+  maxTokens?: number;
+  promptCategory?: string;
 }) {
   const entry = {
     timestamp: Date.now(),
-    ...data,
+    latency: data.latency,
+    tokens: data.tokens,
+    success: data.success,
+    model: data.model,
   };
   
   metricsStore.requests.push(entry);
@@ -140,13 +154,50 @@ export function trackLLMRequest(data: {
   const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
   metricsStore.requests = metricsStore.requests.filter(r => r.timestamp > oneDayAgo);
 
-  // Track in Datadog RUM
-  if (typeof datadogRum !== 'undefined' && datadogRum.addAction) {
-    datadogRum.addAction('llm_request', {
-      latency: data.latency,
-      tokens: data.tokens,
-      success: data.success,
-      model: data.model,
+  // Calculate ML quality metrics
+  const promptLength = data.prompt?.length || 0;
+  const tokens_in = Math.ceil(promptLength / 4);
+  const tokens_out = data.tokens;
+  
+  // Simple quality heuristics (in production, use real ML models)
+  const toxicityScore = detectToxicity(data.response || '');
+  const coherenceScore = calculateCoherence(data.response || '');
+  const hallucination_risk = estimateHallucinationRisk(data.prompt || '', data.response || '');
+
+  // Enhanced Datadog APM tracking
+  trackLLMRequestAPM({
+    prompt: data.prompt || '',
+    model: data.model,
+    temperature: data.temperature || 0.7,
+    maxTokens: data.maxTokens || 1024,
+    latency: data.latency,
+    tokens_in,
+    tokens_out,
+    success: data.success,
+    error: data.error,
+    promptCategory: data.promptCategory || categorizePrompt(data.prompt || ''),
+    toxicityScore,
+    coherenceScore,
+    hallucination_risk,
+  });
+
+  // Track ML quality separately
+  trackMLQualityMetrics({
+    model: data.model,
+    response_coherence: coherenceScore,
+    toxicity_score: toxicityScore,
+    hallucination_probability: hallucination_risk,
+  });
+
+  // Security monitoring
+  if (promptLength > 10000) {
+    trackSecurityEvent({
+      type: 'suspicious_prompt',
+      severity: 'medium',
+      details: {
+        'prompt.length': promptLength,
+        'prompt.model': data.model,
+      },
     });
   }
 
@@ -159,6 +210,54 @@ export function trackLLMRequest(data: {
       metadata: { model: data.model, latency: data.latency },
     });
   }
+}
+
+// Helper functions for ML quality metrics
+function detectToxicity(text: string): number {
+  // Simplified toxicity detection (use Perspective API in production)
+  const toxicWords = ['hate', 'kill', 'stupid', 'idiot', 'fool'];
+  const textLower = text.toLowerCase();
+  const matches = toxicWords.filter(word => textLower.includes(word)).length;
+  return Math.min(matches / 10, 1.0);
+}
+
+function calculateCoherence(text: string): number {
+  // Simplified coherence (use real NLP model in production)
+  if (!text || text.length < 10) return 0.3;
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  const avgSentenceLength = text.length / Math.max(sentences.length, 1);
+  const coherence = Math.min(avgSentenceLength / 100, 1.0);
+  return parseFloat(coherence.toFixed(2));
+}
+
+function estimateHallucinationRisk(prompt: string, response: string): number {
+  // Simplified hallucination detection (use factuality model in production)
+  if (!response || !prompt) return 0;
+  
+  // Check for specific factual claims
+  const factuallyCriticalPhrases = ['according to', 'studies show', 'data indicates', 'research proves'];
+  const hasClaims = factuallyCriticalPhrases.some(phrase => response.toLowerCase().includes(phrase));
+  
+  // Check response length vs prompt
+  const lengthRatio = response.length / Math.max(prompt.length, 1);
+  
+  // Higher risk if making claims without context or extreme length ratio
+  if (hasClaims && lengthRatio > 10) return 0.7;
+  if (hasClaims) return 0.4;
+  
+  return 0.1;
+}
+
+function categorizePrompt(prompt: string): string {
+  const promptLower = prompt.toLowerCase();
+  
+  if (promptLower.includes('summarize') || promptLower.includes('summary')) return 'summarization';
+  if (promptLower.includes('translate')) return 'translation';
+  if (promptLower.includes('code') || promptLower.includes('function')) return 'code_generation';
+  if (promptLower.includes('explain') || promptLower.includes('what is')) return 'explanation';
+  if (promptLower.includes('write') || promptLower.includes('create')) return 'content_creation';
+  
+  return 'general';
 }
 
 /**

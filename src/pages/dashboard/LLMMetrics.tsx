@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { ChartCard } from "@/components/dashboard/ChartCard";
+import { PromptOptimizerPanel } from "@/components/dashboard/PromptOptimizerPanel";
 import { cn } from "@/lib/utils";
 import { useLLMMetrics, useTrackedLLMRequest, useTimeSeriesData } from "@/hooks/use-observability";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { ModelType, MODEL_CONFIGS } from "@/lib/vertex-ai/client";
 import {
   Brain,
   Gauge,
@@ -15,29 +19,86 @@ import {
   Timer,
   Send,
   Loader2,
+  Zap,
+  Crown,
 } from "lucide-react";
 
 export default function LLMMetrics() {
   const [prompt, setPrompt] = useState("");
+  const [selectedModel, setSelectedModel] = useState<ModelType>(ModelType.TEXT_FAST);
   const [response, setResponse] = useState("");
   const [lastLatency, setLastLatency] = useState<number | null>(null);
   const [lastTokens, setLastTokens] = useState<number | null>(null);
+  const [lastModel, setLastModel] = useState<string>("");
+  const [lastCost, setLastCost] = useState<number>(0);
+  const [lastPromptAnalysis, setLastPromptAnalysis] = useState<any>(null);
   const { makeRequest, loading, error } = useTrackedLLMRequest();
   const { metrics } = useLLMMetrics(5000);
   const { data: latencyData } = useTimeSeriesData('latency', '1h', 10000);
   const { data: requestsData } = useTimeSeriesData('requests', '1h', 10000);
 
+  // Simple cost calculation helper
+  const calculateCost = (model: string, tokensIn: number, tokensOut: number): number => {
+    const pricing: Record<string, { input: number; output: number }> = {
+      'gemini-2.5-flash': { input: 0.075, output: 0.30 },
+      'gemini-2.5-pro': { input: 1.25, output: 5.00 },
+      'gemini-1.5-flash': { input: 0.075, output: 0.30 },
+    };
+    const modelPricing = pricing[model] || pricing['gemini-2.5-flash'];
+    const costIn = (tokensIn / 1_000_000) * modelPricing.input;
+    const costOut = (tokensOut / 1_000_000) * modelPricing.output;
+    return parseFloat((costIn + costOut).toFixed(6));
+  };
+
   const handleTest = async () => {
     if (!prompt.trim()) return;
     
     try {
-      const result = await makeRequest(prompt);
-      setResponse(result.text);
+      const result = await makeRequest(prompt, {
+        model: selectedModel,
+        temperature: 0.7,
+        maxTokens: 8192,  // Increased from 1024 to get fuller responses
+      });
+      
+      const responseText = result.text || result.imageUrl || 'No response';
+      setResponse(responseText);
       setLastLatency(result.latency);
       setLastTokens(result.tokens);
+      setLastModel(result.model);
+      
+      // Calculate cost (rough estimate based on tokens)
+      const estimatedInputTokens = Math.ceil(prompt.length / 4); // Rough estimate: 4 chars = 1 token
+      const estimatedOutputTokens = result.tokens || 0;
+      const cost = calculateCost(result.model, estimatedInputTokens, estimatedOutputTokens);
+      setLastCost(cost);
+      
+      // Create PromptAnalysis for Lyra
+      const analysis = {
+        originalPrompt: prompt,
+        model: result.model,
+        tokensIn: estimatedInputTokens,
+        tokensOut: estimatedOutputTokens,
+        latency: result.latency,
+        cost: cost,
+        response: responseText,
+      };
+      setLastPromptAnalysis(analysis);
+      
     } catch (err) {
       setResponse(`Error: ${err instanceof Error ? err.message : 'Failed to get response'}`);
     }
+  };
+
+  // Get model icon
+  const getModelIcon = (model: ModelType) => {
+    if (model === ModelType.TEXT_PRO) return Crown;
+    return Zap;
+  };
+
+  // Get model badge color
+  const getModelBadgeClass = (model: ModelType) => {
+    if (model === ModelType.TEXT_PRO) return 'bg-purple-100 text-purple-700 border-purple-200';
+    return 'bg-blue-100 text-blue-700 border-blue-200';
   };
 
   // Format chart data
@@ -207,16 +268,63 @@ export default function LLMMetrics() {
       {/* AI Prompt Tester */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         <div className="p-6 border-b border-border">
-          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
-            Live AI Tester
-          </h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            Test Vertex AI Gemini model in real-time
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                Live AI Tester
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Test Vertex AI Gemini models in real-time
+              </p>
+            </div>
+            <Badge variant="outline" className={cn("font-mono", getModelBadgeClass(selectedModel))}>
+              {MODEL_CONFIGS[selectedModel].name}
+            </Badge>
+          </div>
         </div>
         <div className="p-6 space-y-4">
+          {/* Model Selector */}
           <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Select Model</label>
+            <Select value={selectedModel} onValueChange={(value) => setSelectedModel(value as ModelType)}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(MODEL_CONFIGS).map(([key, config]) => {
+                  const ModelIcon = getModelIcon(key as ModelType);
+                  return (
+                    <SelectItem key={key} value={key}>
+                      <div className="flex items-center gap-3 py-1">
+                        <ModelIcon className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex-1">
+                          <div className="font-medium">{config.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {config.rpm.toLocaleString()} RPM · {config.type === 'text' ? `${(config.tpm / 1000000).toFixed(1)}M TPM` : `${config.rpd} RPD`}
+                          </div>
+                        </div>
+                        <div className="flex gap-1">
+                          {config.capabilities.slice(0, 2).map((cap, idx) => (
+                            <Badge key={idx} variant="secondary" className="text-xs px-1.5 py-0">
+                              {cap.split('-')[0]}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {MODEL_CONFIGS[selectedModel].capabilities.join(' · ')}
+            </p>
+          </div>
+
+          {/* Prompt Input */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Your Prompt</label>
             <Textarea
               placeholder="Enter your prompt here..."
               value={prompt}
@@ -224,23 +332,25 @@ export default function LLMMetrics() {
               className="min-h-[100px] resize-none"
             />
             <div className="flex items-center justify-between">
-              <div className="flex gap-4 text-sm text-muted-foreground">
+              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                 {lastLatency && (
                   <span className="flex items-center gap-1">
                     <Timer className="h-4 w-4" />
                     {lastLatency}ms
                   </span>
                 )}
-                {lastTokens && (
+                {lastTokens !== null && lastTokens > 0 && (
                   <span className="flex items-center gap-1">
                     <Sparkles className="h-4 w-4" />
                     {lastTokens} tokens
                   </span>
                 )}
-                <span className="flex items-center gap-1">
-                  <MessageSquare className="h-4 w-4" />
-                  {metrics.totalRequests} requests
-                </span>
+                {lastModel && (
+                  <span className="flex items-center gap-1">
+                    <Brain className="h-4 w-4" />
+                    {lastModel}
+                  </span>
+                )}
               </div>
               <Button onClick={handleTest} disabled={loading || !prompt.trim()}>
                 {loading ? (
@@ -251,7 +361,7 @@ export default function LLMMetrics() {
                 ) : (
                   <>
                     <Send className="h-4 w-4 mr-2" />
-                    Test Prompt
+                    Test AI
                   </>
                 )}
               </Button>
@@ -272,6 +382,9 @@ export default function LLMMetrics() {
           )}
         </div>
       </div>
+
+      {/* Lyra Prompt Optimizer */}
+      <PromptOptimizerPanel initialAnalysis={lastPromptAnalysis} />
 
       {/* Model Table */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">

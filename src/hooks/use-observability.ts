@@ -175,7 +175,7 @@ export function useTrackedLLMRequest() {
 
   const makeRequest = useCallback(async (
     prompt: string,
-    options?: { model?: string }
+    options?: { model?: string; temperature?: number; maxTokens?: number }
   ) => {
     setLoading(true);
     setError(null);
@@ -189,20 +189,24 @@ export function useTrackedLLMRequest() {
       
       const response = await vertexAI.predict({
         prompt,
-        maxTokens: 1024,
-        temperature: 0.7,
+        maxTokens: options?.maxTokens || 1024,
+        temperature: options?.temperature || 0.7,
         model,
       });
       
       const latency = Date.now() - startTime;
       const tokens = response.tokens || Math.ceil(response.text.length / 4);
       
-      // Track success
+      // Track success with full metadata
       observabilityService.trackLLMRequest({
         latency,
         tokens,
         success: true,
         model,
+        prompt,
+        response: response.text,
+        temperature: options?.temperature || 0.7,
+        maxTokens: options?.maxTokens || 1024,
       });
       
       observabilityService.addLog({

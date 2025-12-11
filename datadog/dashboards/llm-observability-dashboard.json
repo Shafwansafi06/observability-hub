@@ -1,0 +1,696 @@
+{
+  "title": "ObservAI Hub - LLM Observability Dashboard",
+  "description": "Competition-grade observability for LLM applications with Vertex AI Gemini",
+  "widgets": [
+    {
+      "id": 1,
+      "definition": {
+        "title": "🎯 LLM Request Overview",
+        "title_size": "16",
+        "title_align": "left",
+        "type": "query_value",
+        "requests": [
+          {
+            "formulas": [
+              {
+                "formula": "query1"
+              }
+            ],
+            "queries": [
+              {
+                "data_source": "rum",
+                "name": "query1",
+                "search": {
+                  "query": "@type:action @action.target.name:llm_inference"
+                },
+                "compute": {
+                  "aggregation": "count"
+                },
+                "group_by": [],
+                "indexes": ["*"]
+              }
+            ],
+            "response_format": "scalar"
+          }
+        ],
+        "autoscale": true,
+        "precision": 0
+      },
+      "layout": {
+        "x": 0,
+        "y": 0,
+        "width": 3,
+        "height": 2
+      }
+    },
+    {
+      "id": 2,
+      "definition": {
+        "title": "⚡ Average Latency (ms)",
+        "title_size": "16",
+        "title_align": "left",
+        "type": "query_value",
+        "requests": [
+          {
+            "formulas": [
+              {
+                "formula": "query1"
+              }
+            ],
+            "queries": [
+              {
+                "data_source": "rum",
+                "name": "query1",
+                "search": {
+                  "query": "@type:action @action.target.name:llm_inference"
+                },
+                "compute": {
+                  "aggregation": "avg",
+                  "metric": "@action.llm.latency_ms"
+                },
+                "group_by": [],
+                "indexes": ["*"]
+              }
+            ],
+            "response_format": "scalar"
+          }
+        ],
+        "autoscale": false,
+        "precision": 0
+      },
+      "layout": {
+        "x": 3,
+        "y": 0,
+        "width": 3,
+        "height": 2
+      }
+    },
+    {
+      "id": 3,
+      "definition": {
+        "title": "🧠 Total Tokens Processed",
+        "title_size": "16",
+        "title_align": "left",
+        "type": "query_value",
+        "requests": [
+          {
+            "formulas": [
+              {
+                "formula": "query1"
+              }
+            ],
+            "queries": [
+              {
+                "data_source": "rum",
+                "name": "query1",
+                "search": {
+                  "query": "@type:action @action.target.name:llm_inference"
+                },
+                "compute": {
+                  "aggregation": "sum",
+                  "metric": "@action.llm.tokens.total"
+                },
+                "group_by": [],
+                "indexes": ["*"]
+              }
+            ],
+            "response_format": "scalar"
+          }
+        ],
+        "autoscale": true,
+        "precision": 0
+      },
+      "layout": {
+        "x": 6,
+        "y": 0,
+        "width": 3,
+        "height": 2
+      }
+    },
+    {
+      "id": 4,
+      "definition": {
+        "title": "💰 Estimated Cost (USD)",
+        "title_size": "16",
+        "title_align": "left",
+        "type": "query_value",
+        "requests": [
+          {
+            "formulas": [
+              {
+                "formula": "query1"
+              }
+            ],
+            "queries": [
+              {
+                "data_source": "rum",
+                "name": "query1",
+                "search": {
+                  "query": "@type:action @action.target.name:llm_inference"
+                },
+                "compute": {
+                  "aggregation": "sum",
+                  "metric": "@action.llm.cost_usd"
+                },
+                "group_by": [],
+                "indexes": ["*"]
+              }
+            ],
+            "response_format": "scalar"
+          }
+        ],
+        "autoscale": false,
+        "precision": 4
+      },
+      "layout": {
+        "x": 9,
+        "y": 0,
+        "width": 3,
+        "height": 2
+      }
+    },
+    {
+      "id": 5,
+      "definition": {
+        "title": "📊 LLM Request Volume Over Time",
+        "title_size": "16",
+        "title_align": "left",
+        "show_legend": true,
+        "legend_layout": "auto",
+        "legend_columns": ["avg", "min", "max", "value", "sum"],
+        "type": "timeseries",
+        "requests": [
+          {
+            "formulas": [
+              {
+                "alias": "Requests",
+                "formula": "query1"
+              }
+            ],
+            "queries": [
+              {
+                "data_source": "rum",
+                "name": "query1",
+                "search": {
+                  "query": "@type:action @action.target.name:llm_inference"
+                },
+                "compute": {
+                  "aggregation": "count"
+                },
+                "group_by": [],
+                "indexes": ["*"]
+              }
+            ],
+            "response_format": "timeseries",
+            "style": {
+              "palette": "dog_classic",
+              "line_type": "solid",
+              "line_width": "normal"
+            },
+            "display_type": "area"
+          }
+        ],
+        "yaxis": {
+          "include_zero": true,
+          "scale": "linear",
+          "label": "",
+          "min": "auto",
+          "max": "auto"
+        }
+      },
+      "layout": {
+        "x": 0,
+        "y": 2,
+        "width": 6,
+        "height": 3
+      }
+    },
+    {
+      "id": 6,
+      "definition": {
+        "title": "⏱️ Latency Distribution (P50, P95, P99)",
+        "title_size": "16",
+        "title_align": "left",
+        "show_legend": true,
+        "legend_layout": "auto",
+        "legend_columns": ["avg", "min", "max", "value", "sum"],
+        "type": "timeseries",
+        "requests": [
+          {
+            "formulas": [
+              {
+                "alias": "P50",
+                "formula": "query1"
+              },
+              {
+                "alias": "P95",
+                "formula": "query2"
+              },
+              {
+                "alias": "P99",
+                "formula": "query3"
+              }
+            ],
+            "queries": [
+              {
+                "data_source": "rum",
+                "name": "query1",
+                "search": {
+                  "query": "@type:action @action.target.name:llm_inference"
+                },
+                "compute": {
+                  "aggregation": "median",
+                  "metric": "@action.llm.latency_ms"
+                },
+                "group_by": [],
+                "indexes": ["*"]
+              },
+              {
+                "data_source": "rum",
+                "name": "query2",
+                "search": {
+                  "query": "@type:action @action.target.name:llm_inference"
+                },
+                "compute": {
+                  "aggregation": "p95",
+                  "metric": "@action.llm.latency_ms"
+                },
+                "group_by": [],
+                "indexes": ["*"]
+              },
+              {
+                "data_source": "rum",
+                "name": "query3",
+                "search": {
+                  "query": "@type:action @action.target.name:llm_inference"
+                },
+                "compute": {
+                  "aggregation": "p99",
+                  "metric": "@action.llm.latency_ms"
+                },
+                "group_by": [],
+                "indexes": ["*"]
+              }
+            ],
+            "response_format": "timeseries",
+            "style": {
+              "palette": "dog_classic",
+              "line_type": "solid",
+              "line_width": "normal"
+            },
+            "display_type": "line"
+          }
+        ]
+      },
+      "layout": {
+        "x": 6,
+        "y": 2,
+        "width": 6,
+        "height": 3
+      }
+    },
+    {
+      "id": 7,
+      "definition": {
+        "title": "🤖 Requests by Model",
+        "title_size": "16",
+        "title_align": "left",
+        "type": "toplist",
+        "requests": [
+          {
+            "formulas": [
+              {
+                "formula": "query1",
+                "limit": {
+                  "count": 10,
+                  "order": "desc"
+                }
+              }
+            ],
+            "queries": [
+              {
+                "data_source": "rum",
+                "name": "query1",
+                "search": {
+                  "query": "@type:action @action.target.name:llm_inference"
+                },
+                "compute": {
+                  "aggregation": "count"
+                },
+                "group_by": [
+                  {
+                    "facet": "@action.llm.model",
+                    "limit": 10,
+                    "sort": {
+                      "aggregation": "count",
+                      "order": "desc"
+                    }
+                  }
+                ],
+                "indexes": ["*"]
+              }
+            ],
+            "response_format": "scalar"
+          }
+        ]
+      },
+      "layout": {
+        "x": 0,
+        "y": 5,
+        "width": 4,
+        "height": 3
+      }
+    },
+    {
+      "id": 8,
+      "definition": {
+        "title": "📝 Prompt Categories",
+        "title_size": "16",
+        "title_align": "left",
+        "type": "sunburst",
+        "requests": [
+          {
+            "formulas": [
+              {
+                "formula": "query1"
+              }
+            ],
+            "queries": [
+              {
+                "data_source": "rum",
+                "name": "query1",
+                "search": {
+                  "query": "@type:action @action.target.name:llm_inference"
+                },
+                "compute": {
+                  "aggregation": "count"
+                },
+                "group_by": [
+                  {
+                    "facet": "@action.llm.prompt.category",
+                    "limit": 10,
+                    "sort": {
+                      "aggregation": "count",
+                      "order": "desc"
+                    }
+                  }
+                ],
+                "indexes": ["*"]
+              }
+            ],
+            "response_format": "scalar"
+          }
+        ],
+        "legend": {
+          "type": "inline"
+        }
+      },
+      "layout": {
+        "x": 4,
+        "y": 5,
+        "width": 4,
+        "height": 3
+      }
+    },
+    {
+      "id": 9,
+      "definition": {
+        "title": "🚨 Error Rate (%)",
+        "title_size": "16",
+        "title_align": "left",
+        "type": "query_value",
+        "requests": [
+          {
+            "formulas": [
+              {
+                "formula": "(query2 / query1) * 100"
+              }
+            ],
+            "queries": [
+              {
+                "data_source": "rum",
+                "name": "query1",
+                "search": {
+                  "query": "@type:action @action.target.name:llm_inference"
+                },
+                "compute": {
+                  "aggregation": "count"
+                },
+                "group_by": [],
+                "indexes": ["*"]
+              },
+              {
+                "data_source": "rum",
+                "name": "query2",
+                "search": {
+                  "query": "@type:action @action.target.name:llm_inference @action.llm.success:false"
+                },
+                "compute": {
+                  "aggregation": "count"
+                },
+                "group_by": [],
+                "indexes": ["*"]
+              }
+            ],
+            "response_format": "scalar",
+            "conditional_formats": [
+              {
+                "comparator": ">",
+                "value": 5,
+                "palette": "white_on_red"
+              },
+              {
+                "comparator": ">",
+                "value": 2,
+                "palette": "white_on_yellow"
+              },
+              {
+                "comparator": "<=",
+                "value": 2,
+                "palette": "white_on_green"
+              }
+            ]
+          }
+        ],
+        "autoscale": true,
+        "precision": 2
+      },
+      "layout": {
+        "x": 8,
+        "y": 5,
+        "width": 4,
+        "height": 3
+      }
+    },
+    {
+      "id": 10,
+      "definition": {
+        "title": "🎭 ML Quality Metrics",
+        "title_size": "16",
+        "title_align": "left",
+        "show_legend": true,
+        "legend_layout": "auto",
+        "legend_columns": ["avg", "min", "max", "value"],
+        "type": "timeseries",
+        "requests": [
+          {
+            "formulas": [
+              {
+                "alias": "Toxicity Score",
+                "formula": "query1"
+              },
+              {
+                "alias": "Coherence Score",
+                "formula": "query2"
+              },
+              {
+                "alias": "Hallucination Risk",
+                "formula": "query3"
+              }
+            ],
+            "queries": [
+              {
+                "data_source": "rum",
+                "name": "query1",
+                "search": {
+                  "query": "@type:action @action.target.name:llm_inference"
+                },
+                "compute": {
+                  "aggregation": "avg",
+                  "metric": "@action.llm.quality.toxicity_score"
+                },
+                "group_by": [],
+                "indexes": ["*"]
+              },
+              {
+                "data_source": "rum",
+                "name": "query2",
+                "search": {
+                  "query": "@type:action @action.target.name:llm_inference"
+                },
+                "compute": {
+                  "aggregation": "avg",
+                  "metric": "@action.llm.quality.coherence_score"
+                },
+                "group_by": [],
+                "indexes": ["*"]
+              },
+              {
+                "data_source": "rum",
+                "name": "query3",
+                "search": {
+                  "query": "@type:action @action.target.name:llm_inference"
+                },
+                "compute": {
+                  "aggregation": "avg",
+                  "metric": "@action.llm.quality.hallucination_risk"
+                },
+                "group_by": [],
+                "indexes": ["*"]
+              }
+            ],
+            "response_format": "timeseries",
+            "display_type": "line"
+          }
+        ]
+      },
+      "layout": {
+        "x": 0,
+        "y": 8,
+        "width": 6,
+        "height": 3
+      }
+    },
+    {
+      "id": 11,
+      "definition": {
+        "title": "💸 Cost Per Model (USD)",
+        "title_size": "16",
+        "title_align": "left",
+        "type": "toplist",
+        "requests": [
+          {
+            "formulas": [
+              {
+                "formula": "query1",
+                "limit": {
+                  "count": 10,
+                  "order": "desc"
+                }
+              }
+            ],
+            "queries": [
+              {
+                "data_source": "rum",
+                "name": "query1",
+                "search": {
+                  "query": "@type:action @action.target.name:llm_inference"
+                },
+                "compute": {
+                  "aggregation": "sum",
+                  "metric": "@action.llm.cost_usd"
+                },
+                "group_by": [
+                  {
+                    "facet": "@action.llm.model",
+                    "limit": 10,
+                    "sort": {
+                      "aggregation": "sum",
+                      "metric": "@action.llm.cost_usd",
+                      "order": "desc"
+                    }
+                  }
+                ],
+                "indexes": ["*"]
+              }
+            ],
+            "response_format": "scalar"
+          }
+        ]
+      },
+      "layout": {
+        "x": 6,
+        "y": 8,
+        "width": 6,
+        "height": 3
+      }
+    },
+    {
+      "id": 12,
+      "definition": {
+        "title": "🔍 Recent LLM Requests (Logs)",
+        "title_size": "16",
+        "title_align": "left",
+        "type": "log_stream",
+        "query": "service:vertex-ai-client",
+        "columns": ["timestamp", "llm.model", "llm.latency_ms", "llm.tokens.total", "llm.success"],
+        "show_date_column": true,
+        "show_message_column": true,
+        "message_display": "expanded-md"
+      },
+      "layout": {
+        "x": 0,
+        "y": 11,
+        "width": 12,
+        "height": 4
+      }
+    },
+    {
+      "id": 13,
+      "definition": {
+        "title": "⚠️ Security Events",
+        "title_size": "16",
+        "title_align": "left",
+        "type": "log_stream",
+        "query": "service:security-monitor",
+        "columns": ["timestamp", "security.event_type", "security.severity"],
+        "show_date_column": true,
+        "show_message_column": true,
+        "message_display": "expanded-md"
+      },
+      "layout": {
+        "x": 0,
+        "y": 15,
+        "width": 6,
+        "height": 3
+      }
+    },
+    {
+      "id": 14,
+      "definition": {
+        "title": "🔬 ML Observability Events",
+        "title_size": "16",
+        "title_align": "left",
+        "type": "log_stream",
+        "query": "service:ml-observability",
+        "columns": ["timestamp", "ml.model", "ml.quality.coherence", "ml.quality.hallucination_prob"],
+        "show_date_column": true,
+        "show_message_column": true,
+        "message_display": "expanded-md"
+      },
+      "layout": {
+        "x": 6,
+        "y": 15,
+        "width": 6,
+        "height": 3
+      }
+    }
+  ],
+  "template_variables": [
+    {
+      "name": "model",
+      "prefix": "@action.llm.model",
+      "available_values": [],
+      "default": "*"
+    },
+    {
+      "name": "env",
+      "prefix": "env",
+      "available_values": [],
+      "default": "production"
+    }
+  ],
+  "layout_type": "ordered",
+  "notify_list": [],
+  "reflow_type": "fixed"
+}

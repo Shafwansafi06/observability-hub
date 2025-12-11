@@ -1,0 +1,493 @@
+{
+  "detection_rules": [
+    {
+      "category": "1️⃣ DATA QUALITY & PIPELINE HEALTH",
+      "rules": [
+        {
+          "id": "DQ-001",
+          "name": "Missing Data Spike - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_5m):avg:observai.data.null_percentage{*} > 20 or avg(last_5m):rate(observai.data.record_count{*}) < -20",
+          "message": "## 🚨 Missing Data Spike Detected\n\n**Alert ID**: DQ-001\n**Severity**: Critical\n**Category**: Data Quality\n\n### Impact\n- Data pipeline producing incomplete records\n- Downstream ML models may receive corrupted inputs\n- Feature quality degraded\n\n### Detected Conditions\n- Null percentage: {{value}}% (threshold: 20%)\n- OR record count dropped >20% suddenly\n\n### Possible Causes\n- Upstream data source failure\n- ETL pipeline bug\n- Schema mismatch\n- Network partition\n\n### Recommended Actions\n1. Check data source health: `kubectl logs -f data-ingestion-pod`\n2. Verify ETL pipeline: {{#is_alert}}Check Airflow DAG status{{/is_alert}}\n3. Review recent schema changes\n4. Check Datadog APM traces for pipeline failures\n5. Validate data source connections\n\n### Relevant Links\n- [Pipeline Dashboard](https://app.datadoghq.com/dashboard/data-pipeline)\n- [Recent Traces]({{trace.link}})\n- [Runbook](https://wiki.company.com/data-quality-incidents)\n\n@slack-data-engineering @pagerduty-critical @oncall-data",
+          "tags": ["service:observai-hub", "category:data-quality", "severity:critical", "team:data-engineering"],
+          "priority": 1,
+          "thresholds": {
+            "critical": 20,
+            "warning": 15
+          }
+        },
+        {
+          "id": "DQ-002",
+          "name": "Schema Drift Detected - ObservAI",
+          "type": "log alert",
+          "query": "logs(\"service:observai-hub @event.type:schema_change @schema.drift:detected\").index(\"*\").rollup(\"count\").last(\"15m\") > 0",
+          "message": "## 🔄 Schema Drift Detected\n\n**Alert ID**: DQ-002\n**Severity**: High\n**Category**: Data Quality\n\n### Impact\n- Schema changes detected in data pipeline\n- ML models expecting specific schema may break\n- Feature extraction could fail\n\n### Detected Changes\n- Column type changes\n- New or removed fields\n- Column order modifications\n- Unexpected enum values\n\n### Recommended Actions\n1. Review schema change log: `observai.schema.changes`\n2. Check if change was intentional\n3. Update model feature extractors if needed\n4. Run schema validation tests\n5. Update documentation\n\n### Prevention\n- Implement schema versioning\n- Add backward compatibility checks\n- Use strict schema validation\n\n@slack-ml-engineering @data-platform-team",
+          "tags": ["service:observai-hub", "category:data-quality", "severity:high", "team:data-platform"],
+          "priority": 2
+        },
+        {
+          "id": "DQ-003",
+          "name": "Outlier Explosion - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_10m):avg:observai.data.outlier_percentage{*} > 15",
+          "message": "## 📊 Outlier Explosion Detected\n\n**Alert ID**: DQ-003\n**Severity**: Warning\n**Category**: Data Quality\n\n### Impact\n- Abnormal percentage of outliers detected: {{value}}%\n- Data distribution significantly different from baseline\n- Model predictions may become unreliable\n\n### Detected Anomaly\n- >{{threshold}}% of rows exceed 3-5σ deviation\n- Statistical anomaly detected\n\n### Possible Causes\n- Real-world event causing distribution shift\n- Data corruption\n- Sensor malfunction\n- Fraudulent activity spike\n\n### Recommended Actions\n1. Investigate recent data changes\n2. Check for system errors in data collection\n3. Review outlier samples manually\n4. Consider triggering model retraining\n5. Update outlier detection thresholds if needed\n\n@slack-ml-ops @data-science-team",
+          "tags": ["service:observai-hub", "category:data-quality", "severity:warning", "team:ml-ops"],
+          "priority": 3,
+          "thresholds": {
+            "critical": 20,
+            "warning": 15
+          }
+        },
+        {
+          "id": "DQ-004",
+          "name": "Data Freshness Delay - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_5m):avg:observai.data.ingestion_delay_seconds{*} > 300",
+          "message": "## ⏰ Data Freshness SLA Violation\n\n**Alert ID**: DQ-004\n**Severity**: High\n**Category**: Data Pipeline\n\n### Impact\n- Data ingestion delayed: {{value}} seconds\n- Real-time ML predictions using stale data\n- SLA breach detected\n\n### Expected SLA\n- Maximum delay: 5 minutes (300 seconds)\n- Current delay: {{value}} seconds\n\n### Recommended Actions\n1. Check Kafka lag: `kafka-consumer-groups --describe --group observai-consumer`\n2. Review pipeline bottlenecks\n3. Scale up workers if needed\n4. Check data source availability\n\n@slack-data-platform @oncall-infrastructure",
+          "tags": ["service:observai-hub", "category:data-freshness", "severity:high", "team:data-platform"],
+          "priority": 2,
+          "thresholds": {
+            "critical": 600,
+            "warning": 300
+          }
+        },
+        {
+          "id": "DQ-005",
+          "name": "Duplicate Records Spike - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_15m):avg:observai.data.duplicate_percentage{*} > 10",
+          "message": "## 🔁 Duplicate Records Detected\n\n**Alert ID**: DQ-005\n**Severity**: Warning\n**Category**: Data Quality\n\n### Impact\n- Duplicate records: {{value}}% (baseline: <5%)\n- Training data contamination risk\n- Biased model predictions\n\n### Recommended Actions\n1. Check deduplication logic\n2. Review primary key constraints\n3. Investigate ETL pipeline for retry issues\n4. Clean affected datasets\n\n@slack-data-engineering",
+          "tags": ["service:observai-hub", "category:data-quality", "severity:warning"],
+          "priority": 3,
+          "thresholds": {
+            "critical": 15,
+            "warning": 10
+          }
+        },
+        {
+          "id": "DQ-006",
+          "name": "Data Pipeline Backpressure - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_5m):avg:observai.pipeline.kafka_lag{*} > 10000 or avg(last_5m):avg:observai.pipeline.queue_depth{*} > 5000",
+          "message": "## 🚦 Data Pipeline Backpressure\n\n**Alert ID**: DQ-006\n**Severity**: Critical\n**Category**: Pipeline Health\n\n### Impact\n- Kafka lag: {{value}} messages\n- OR Queue depth: {{value}} items\n- Pipeline unable to keep up with ingestion rate\n\n### Detected Issues\n- Kafka consumer lag exceeding threshold\n- Airflow queue delays\n- Batch processing slowdown\n\n### Recommended Actions\n1. Scale up consumers: `kubectl scale deployment observai-consumer --replicas=10`\n2. Check for slow processing: Review APM traces\n3. Increase batch size if appropriate\n4. Review resource utilization (CPU, memory)\n\n@pagerduty-critical @slack-infrastructure",
+          "tags": ["service:observai-hub", "category:pipeline", "severity:critical"],
+          "priority": 1,
+          "thresholds": {
+            "critical": 10000,
+            "warning": 5000
+          }
+        }
+      ]
+    },
+    {
+      "category": "2️⃣ FEATURE STORE & EMBEDDING QUALITY",
+      "rules": [
+        {
+          "id": "FS-001",
+          "name": "Vector Similarity Collapse - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_10m):avg:observai.embeddings.norm_std{*} < 0.01 or avg(last_10m):avg:observai.embeddings.cosine_similarity{*} > 0.99",
+          "message": "## 🧲 Vector Embedding Anomaly\n\n**Alert ID**: FS-001\n**Severity**: Critical\n**Category**: Embedding Quality\n\n### Impact\n- Embedding norms collapsed or identical\n- Model producing degenerate embeddings\n- Vector similarity search will fail\n\n### Detected Anomaly\n- Embedding norm std: {{value}} (expected: >0.01)\n- OR cosine similarity: {{value}} (all vectors identical)\n\n### Possible Causes\n- Model stuck/frozen\n- Gradient vanishing\n- Incorrect normalization\n- Model weights corrupted\n\n### Recommended Actions\n1. Restart embedding service\n2. Roll back to previous model version\n3. Check model checkpoint integrity\n4. Review recent model updates\n5. Validate embedding pipeline\n\n@slack-ml-engineering @pagerduty-critical",
+          "tags": ["service:observai-hub", "category:embeddings", "severity:critical"],
+          "priority": 1,
+          "thresholds": {
+            "critical": 0.01,
+            "warning": 0.05
+          }
+        },
+        {
+          "id": "FS-002",
+          "name": "Feature Drift Detected - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_1h):avg:observai.features.psi_score{*} > 0.2 or avg(last_1h):avg:observai.features.ks_statistic{*} > 0.2",
+          "message": "## 📉 Feature Drift Detected\n\n**Alert ID**: FS-002\n**Severity**: High\n**Category**: Feature Quality\n\n### Impact\n- Feature distribution drift detected\n- PSI score: {{value}} (threshold: 0.2)\n- OR KS-test statistic: {{value}}\n- Model performance may degrade\n\n### Statistical Measures\n- Population Stability Index (PSI) > 0.2 indicates significant drift\n- Kolmogorov-Smirnov test shows distribution change\n\n### Recommended Actions\n1. Review feature engineering pipeline\n2. Check for data source changes\n3. Consider model retraining with recent data\n4. Update feature baseline distributions\n5. Investigate upstream data changes\n\n### Feature Drift Severity\n- PSI < 0.1: No significant drift\n- PSI 0.1-0.2: Moderate drift\n- PSI > 0.2: **Significant drift** ⚠️\n\n@slack-ml-ops @data-science-team",
+          "tags": ["service:observai-hub", "category:feature-drift", "severity:high"],
+          "priority": 2,
+          "thresholds": {
+            "critical": 0.25,
+            "warning": 0.2
+          }
+        },
+        {
+          "id": "FS-003",
+          "name": "Feature Latency Spike - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_5m):p95:observai.features.lookup_latency_ms{*} > 500",
+          "message": "## ⏱️ Feature Store Latency Spike\n\n**Alert ID**: FS-003\n**Severity**: High\n**Category**: Feature Store Performance\n\n### Impact\n- Feature lookup latency: {{value}}ms (p95)\n- Inference requests slowing down\n- User-facing API affected\n\n### Recommended Actions\n1. Check feature store database health\n2. Review Redis/cache hit rates\n3. Scale feature store read replicas\n4. Check for slow queries\n5. Review recent feature additions\n\n@slack-ml-platform @oncall-infrastructure",
+          "tags": ["service:observai-hub", "category:feature-store", "severity:high"],
+          "priority": 2,
+          "thresholds": {
+            "critical": 1000,
+            "warning": 500
+          }
+        }
+      ]
+    },
+    {
+      "category": "3️⃣ MODEL PERFORMANCE & DRIFT",
+      "rules": [
+        {
+          "id": "ML-001",
+          "name": "Prediction Drift Detected - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_1h):avg:observai.model.prediction_drift_score{*} > 0.3",
+          "message": "## 🎯 Model Prediction Drift\n\n**Alert ID**: ML-001\n**Severity**: High\n**Category**: Model Drift\n\n### Impact\n- Prediction distribution changed significantly\n- Drift score: {{value}} (threshold: 0.3)\n- Model behavior deviating from baseline\n\n### Possible Causes\n- Input data distribution shift\n- Model degradation\n- Concept drift\n- Real-world changes\n\n### Recommended Actions\n1. Compare prediction distributions: baseline vs current\n2. Analyze recent input data for changes\n3. Review model performance metrics\n4. Consider triggering model retraining\n5. Check for data quality issues (see DQ-* alerts)\n\n@slack-ml-ops @data-science-team",
+          "tags": ["service:observai-hub", "category:model-drift", "severity:high"],
+          "priority": 2,
+          "thresholds": {
+            "critical": 0.4,
+            "warning": 0.3
+          }
+        },
+        {
+          "id": "ML-002",
+          "name": "Label Drift Detected - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_24h):avg:observai.model.label_distribution_shift{*} > 0.25",
+          "message": "## 🏷️ Ground Truth Distribution Change\n\n**Alert ID**: ML-002\n**Severity**: High\n**Category**: Label Drift\n\n### Impact\n- Ground truth distribution shifted: {{value}}\n- Target variable behavior changing\n- Model assumptions may be violated\n\n### Recommended Actions\n1. Review delayed label feedback\n2. Analyze class distribution changes\n3. Check for labeling pipeline changes\n4. Consider model retraining with updated data\n\n@slack-ml-ops",
+          "tags": ["service:observai-hub", "category:label-drift", "severity:high"],
+          "priority": 2
+        },
+        {
+          "id": "ML-003",
+          "name": "Model Accuracy Degradation - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_1h):avg:observai.model.accuracy{*} < 0.85 or avg(last_1h):avg:observai.model.f1_score{*} < 0.80",
+          "message": "## 📉 Model Performance Degradation\n\n**Alert ID**: ML-003\n**Severity**: Critical\n**Category**: Model Performance\n\n### Impact\n- Accuracy: {{value}} (expected: >85%)\n- OR F1 Score: {{value}} (expected: >80%)\n- Model performance below acceptable threshold\n\n### Immediate Actions\n1. Roll back to previous model version if available\n2. Check for data quality issues\n3. Review recent model deployments\n4. Analyze error patterns\n5. Check for infrastructure issues (GPU, memory)\n\n### Root Cause Investigation\n- Compare with baseline metrics\n- Review APM traces for errors\n- Check model input data distribution\n- Validate feature engineering pipeline\n\n@pagerduty-critical @slack-ml-engineering @oncall-ml",
+          "tags": ["service:observai-hub", "category:model-performance", "severity:critical"],
+          "priority": 1,
+          "thresholds": {
+            "critical": 0.80,
+            "warning": 0.85
+          }
+        },
+        {
+          "id": "ML-004",
+          "name": "Model Overconfidence Detected - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_30m):avg:observai.model.confidence{*} > 0.95 and avg(last_30m):avg:observai.model.accuracy{*} < 0.80",
+          "message": "## 🎭 Model Overconfidence Warning\n\n**Alert ID**: ML-004\n**Severity**: High\n**Category**: Model Calibration\n\n### Impact\n- Model confidence: {{value}} (>95%)\n- BUT accuracy: {{accuracy_value}} (<80%)\n- Model is overconfident and poorly calibrated\n\n### Risk\n- Incorrect predictions with high confidence\n- Downstream systems trusting bad predictions\n- User trust degradation\n\n### Recommended Actions\n1. Review model calibration\n2. Apply temperature scaling\n3. Check for prediction bias\n4. Consider ensemble methods\n5. Retrain with calibration techniques\n\n@slack-ml-engineering",
+          "tags": ["service:observai-hub", "category:model-calibration", "severity:high"],
+          "priority": 2
+        },
+        {
+          "id": "ML-005",
+          "name": "Silent Model Failure - ObservAI",
+          "type": "log alert",
+          "query": "logs(\"service:observai-hub @model.output.variance:0 OR @model.output.type:nan OR @model.prediction.single_class:true\").index(\"*\").rollup(\"count\").last(\"5m\") > 10",
+          "message": "## 🔇 Silent Model Failure Detected\n\n**Alert ID**: ML-005\n**Severity**: Critical\n**Category**: Model Health\n\n### Impact\n- Model producing degenerate outputs\n- Detected: {{value}} instances in 5 minutes\n\n### Failure Patterns\n- Always predicting same class\n- Zero output variance\n- NaN or Inf values\n\n### Immediate Actions\n1. **Stop serving this model immediately**\n2. Roll back to last known good version\n3. Check model checkpoint integrity\n4. Review deployment logs\n5. Validate model inputs\n\n@pagerduty-critical @slack-ml-engineering",
+          "tags": ["service:observai-hub", "category:model-failure", "severity:critical"],
+          "priority": 1
+        },
+        {
+          "id": "ML-006",
+          "name": "Model Latency SLA Violation - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_5m):p99:observai.model.inference_latency_ms{*} > 2000",
+          "message": "## 🐌 Model Inference Latency SLA Breach\n\n**Alert ID**: ML-006\n**Severity**: High\n**Category**: Model Performance\n\n### Impact\n- P99 latency: {{value}}ms (SLA: <2000ms)\n- User-facing requests timing out\n- API response times degraded\n\n### Recommended Actions\n1. Check GPU utilization and saturation\n2. Review batch size and batching strategy\n3. Check for model complexity issues\n4. Scale inference workers\n5. Review recent model updates\n\n### Performance Optimization\n- Consider model quantization\n- Implement request batching\n- Use model distillation\n- Enable GPU acceleration\n\n@slack-ml-platform @oncall-infrastructure",
+          "tags": ["service:observai-hub", "category:model-latency", "severity:high"],
+          "priority": 2,
+          "thresholds": {
+            "critical": 3000,
+            "warning": 2000
+          }
+        },
+        {
+          "id": "ML-007",
+          "name": "GPU/CPU Saturation - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_5m):avg:system.cpu.usage{service:observai-hub} > 80 or avg(last_5m):avg:system.gpu.utilization{service:observai-hub} > 85",
+          "message": "## 🔥 Compute Resource Saturation\n\n**Alert ID**: ML-007\n**Severity**: High\n**Category**: Infrastructure\n\n### Impact\n- CPU/GPU utilization: {{value}}% (sustained >80%)\n- Inference requests queuing up\n- Latency increasing\n\n### Recommended Actions\n1. Scale horizontally: Add more inference workers\n2. Check for resource leaks (memory, GPU memory)\n3. Review batch processing efficiency\n4. Optimize model serving configuration\n\n@slack-infrastructure @oncall-ml-platform",
+          "tags": ["service:observai-hub", "category:infrastructure", "severity:high"],
+          "priority": 2,
+          "thresholds": {
+            "critical": 90,
+            "warning": 80
+          }
+        }
+      ]
+    },
+    {
+      "category": "4️⃣ LLM APPLICATION-SPECIFIC DETECTIONS",
+      "rules": [
+        {
+          "id": "LLM-001",
+          "name": "Hallucination Probability Spike - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_15m):avg:observai.llm.hallucination_risk{*} > 0.7",
+          "message": "## 🌀 LLM Hallucination Risk Elevated\n\n**Alert ID**: LLM-001\n**Severity**: Critical\n**Category**: LLM Quality\n\n### Impact\n- Hallucination risk: {{value}} (threshold: 0.7)\n- LLM producing potentially factually incorrect outputs\n- User trust and safety at risk\n\n### Detection Signals\n- Factuality score dropped below threshold\n- RAG grounding mismatch increased\n- Output confidence collapsed\n- Factual claim detection triggered\n\n### Recommended Actions\n1. Review recent LLM outputs manually\n2. Check RAG retrieval quality (see LLM-002)\n3. Verify grounding documents are relevant\n4. Consider lowering temperature parameter\n5. Add human-in-the-loop review for high-risk outputs\n\n### Prevention\n- Implement citation requirements\n- Use retrieval-augmented generation (RAG)\n- Add factuality verification layer\n- Fine-tune with human feedback\n\n@slack-llm-safety @pagerduty-critical @ml-governance",
+          "tags": ["service:observai-hub", "category:llm-safety", "severity:critical"],
+          "priority": 1,
+          "thresholds": {
+            "critical": 0.7,
+            "warning": 0.5
+          }
+        },
+        {
+          "id": "LLM-002",
+          "name": "RAG Retrieval Failure - ObservAI",
+          "type": "log alert",
+          "query": "logs(\"service:observai-hub @rag.retrieval.status:failed OR @rag.documents.count:0 OR @rag.relevance_score:<0.3\").index(\"*\").rollup(\"count\").last(\"10m\") > 5",
+          "message": "## 📚 RAG Retrieval System Failure\n\n**Alert ID**: LLM-002\n**Severity**: High\n**Category**: RAG System\n\n### Impact\n- {{value}} retrieval failures in 10 minutes\n- LLM generating responses without proper grounding\n- Increased hallucination risk\n\n### Detected Issues\n- No documents retrieved from vector DB\n- Irrelevant documents retrieved (relevance <0.3)\n- Vector DB latency spikes\n\n### Recommended Actions\n1. Check vector database health (Pinecone/Weaviate/Qdrant)\n2. Verify embedding service is running\n3. Review query transformation logic\n4. Check for index corruption\n5. Validate document collection is populated\n\n### Vector DB Diagnostics\n```bash\n# Check vector DB status\ncurl https://api.vectordb.com/health\n\n# Verify index count\ncurl https://api.vectordb.com/indexes/observai/stats\n```\n\n@slack-llm-platform @vector-db-team",
+          "tags": ["service:observai-hub", "category:rag-system", "severity:high"],
+          "priority": 2
+        },
+        {
+          "id": "LLM-003",
+          "name": "Prompt Injection Detection - ObservAI",
+          "type": "log alert",
+          "query": "logs(\"service:observai-hub (@prompt.injection.detected:true OR @security.jailbreak.attempt:true OR @prompt.content:*ignore previous* OR @prompt.content:*developer mode*)\").index(\"*\").rollup(\"count\").last(\"5m\") > 3",
+          "message": "## 🚨 Prompt Injection Attack Detected\n\n**Alert ID**: LLM-003\n**Severity**: Critical\n**Category**: Security\n\n### Impact\n- {{value}} prompt injection attempts in 5 minutes\n- Potential jailbreak or system prompt override\n- Security breach in progress\n\n### Detected Patterns\n- \"ignore previous instructions\"\n- \"developer mode\"\n- \"override system\"\n- \"you are now\"\n- Sudden spike in jailbreak tokens\n\n### Immediate Actions\n1. **Rate limit the attacking IP/user immediately**\n2. Review recent prompts for injection patterns\n3. Check if any injections succeeded\n4. Update prompt injection filters\n5. Add user to security watchlist\n\n### User Information\n- User ID: {{user_id}}\n- IP: {{client_ip}}\n- Session: {{session_id}}\n\n### Prevention\n- Implement prompt sandboxing\n- Add input validation layers\n- Use OpenAI moderation API\n- Separate system/user prompts clearly\n\n@slack-security @pagerduty-security @incident-response",
+          "tags": ["service:observai-hub", "category:security", "severity:critical", "attack:prompt-injection"],
+          "priority": 1
+        },
+        {
+          "id": "LLM-004",
+          "name": "Toxic/Unsafe Output Detected - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_10m):avg:observai.llm.toxicity_score{*} > 0.5",
+          "message": "## ☢️ Toxic Content Generated\n\n**Alert ID**: LLM-004\n**Severity**: Critical\n**Category**: Content Safety\n\n### Impact\n- Toxicity score: {{value}} (threshold: 0.5)\n- LLM producing unsafe/harmful content\n- Brand reputation and legal risk\n\n### Content Safety Flags\n- Hate speech detected\n- PHI/PII leakage risk\n- Proprietary data exposure\n- Offensive/inappropriate content\n\n### Immediate Actions\n1. **Block/filter the output immediately**\n2. Review the flagged content manually\n3. Check user prompt for malicious intent\n4. Update content moderation rules\n5. Consider user suspension\n\n### Content Moderation\n- Implement pre-generation filtering\n- Use Perspective API for toxicity\n- Add post-generation safety layer\n- Enable human review for edge cases\n\n@slack-trust-safety @legal-team @ml-governance",
+          "tags": ["service:observai-hub", "category:content-safety", "severity:critical"],
+          "priority": 1,
+          "thresholds": {
+            "critical": 0.5,
+            "warning": 0.3
+          }
+        },
+        {
+          "id": "LLM-005",
+          "name": "Context Window Overflow - ObservAI",
+          "type": "log alert",
+          "query": "logs(\"service:observai-hub @llm.error.type:context_length_exceeded OR @llm.tokens.input:>128000\").index(\"*\").rollup(\"count\").last(\"5m\") > 5",
+          "message": "## 📏 Context Window Overflow\n\n**Alert ID**: LLM-005\n**Severity**: High\n**Category**: LLM Errors\n\n### Impact\n- {{value}} requests exceeding context window\n- User inputs near/exceeding model limits\n- Requests failing or being truncated\n\n### Model Limits\n- GPT-4: 128k tokens\n- GPT-3.5: 16k tokens\n- Claude 3: 200k tokens\n- Gemini: Variable by model\n\n### Recommended Actions\n1. Implement input truncation strategy\n2. Add token counting pre-check\n3. Use summarization for long contexts\n4. Switch to longer-context models\n5. Implement conversation pruning\n\n@slack-llm-engineering",
+          "tags": ["service:observai-hub", "category:llm-errors", "severity:high"],
+          "priority": 2
+        },
+        {
+          "id": "LLM-006",
+          "name": "Token Rate Spike (Cost Attack) - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_5m):rate(observai.llm.tokens.total{*}) > 50000",
+          "message": "## 💸 Token Usage Spike - Possible Cost Attack\n\n**Alert ID**: LLM-006\n**Severity**: Critical\n**Category**: Cost & Security\n\n### Impact\n- Token rate: {{value}} tokens/min (baseline: <10k)\n- Possible abuse or cost attack detected\n- Estimated cost spike: ${{estimated_cost}}/hour\n\n### Detection\n- Input/output tokens exceed expected baseline by >5x\n- Potential malicious usage\n\n### Immediate Actions\n1. **Identify the user/API key generating tokens**\n2. Rate limit or temporarily suspend access\n3. Review recent requests for abuse patterns\n4. Check if legitimate usage spike\n5. Update rate limiting rules\n\n### Cost Projection\n- Current rate could cost: ${{daily_cost_projection}}/day\n- Monthly projection: ${{monthly_cost_projection}}\n\n@slack-security @finops-team @pagerduty-critical",
+          "tags": ["service:observai-hub", "category:cost-security", "severity:critical"],
+          "priority": 1,
+          "thresholds": {
+            "critical": 50000,
+            "warning": 30000
+          }
+        },
+        {
+          "id": "LLM-007",
+          "name": "LLM API Timeout Spike - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_5m):p95:observai.llm.api_latency_ms{*} > 10000",
+          "message": "## ⏱️ LLM API Timeout Spike\n\n**Alert ID**: LLM-007\n**Severity**: High\n**Category**: LLM Performance\n\n### Impact\n- P95 API latency: {{value}}ms (baseline: <2000ms)\n- OpenAI/Anthropic/Vertex API responding slowly\n- User requests timing out\n\n### Possible Causes\n- Provider API degradation\n- Network issues\n- Large prompts/responses\n- Rate limiting by provider\n\n### Recommended Actions\n1. Check provider status page\n   - OpenAI: https://status.openai.com\n   - Anthropic: https://status.anthropic.com\n   - Google: https://status.cloud.google.com\n2. Implement fallback to alternative provider\n3. Add request retry logic\n4. Review prompt/response sizes\n\n@slack-llm-platform",
+          "tags": ["service:observai-hub", "category:llm-performance", "severity:high"],
+          "priority": 2,
+          "thresholds": {
+            "critical": 15000,
+            "warning": 10000
+          }
+        }
+      ]
+    },
+    {
+      "category": "5️⃣ API, BACKEND, AND INFRASTRUCTURE HEALTH",
+      "rules": [
+        {
+          "id": "API-001",
+          "name": "Internal Server Error Spike - ObservAI",
+          "type": "metric alert",
+          "query": "sum(last_5m):sum:observai.api.errors{status:500 OR status:503}.as_count() > 10",
+          "message": "## 🔴 Internal Server Error Spike\n\n**Alert ID**: API-001\n**Severity**: Critical\n**Category**: API Health\n\n### Impact\n- {{value}} 5xx errors in 5 minutes\n- User-facing requests failing\n- Service degradation detected\n\n### Error Types\n- 500 Internal Server Error\n- 503 Service Unavailable\n\n### Recommended Actions\n1. Check service health: `kubectl get pods -n observai`\n2. Review error logs: `kubectl logs -f deployment/observai-api`\n3. Check database connections\n4. Verify external dependencies\n5. Review recent deployments\n\n@pagerduty-critical @slack-sre-team",
+          "tags": ["service:observai-hub", "category:api", "severity:critical"],
+          "priority": 1,
+          "thresholds": {
+            "critical": 10,
+            "warning": 5
+          }
+        },
+        {
+          "id": "API-002",
+          "name": "Slow API Response - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_5m):p99:observai.api.latency_ms{*} > 5000",
+          "message": "## 🐢 API Response Time Degraded\n\n**Alert ID**: API-002\n**Severity**: High\n**Category**: API Performance\n\n### Impact\n- P99 latency: {{value}}ms (SLA: <5000ms)\n- User experience degraded\n\n### Recommended Actions\n1. Check database query performance\n2. Review APM traces for bottlenecks\n3. Check cache hit rates\n4. Scale API workers if needed\n\n@slack-sre-team",
+          "tags": ["service:observai-hub", "category:api-performance", "severity:high"],
+          "priority": 2
+        },
+        {
+          "id": "API-003",
+          "name": "Queue Size Anomaly - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_5m):avg:observai.worker.queue_size{*} > 1000",
+          "message": "## 📬 Async Worker Queue Backup\n\n**Alert ID**: API-003\n**Severity**: High\n**Category**: Worker Health\n\n### Impact\n- Queue size: {{value}} (threshold: 1000)\n- Async ML inference requests backing up\n- Processing delays increasing\n\n### Recommended Actions\n1. Scale workers: `kubectl scale deployment observai-worker --replicas=20`\n2. Check worker health and error rates\n3. Review processing times\n4. Check for stuck jobs\n\n@slack-infrastructure",
+          "tags": ["service:observai-hub", "category:workers", "severity:high"],
+          "priority": 2
+        },
+        {
+          "id": "API-004",
+          "name": "Worker Crash Loop - ObservAI",
+          "type": "log alert",
+          "query": "logs(\"service:observai-hub @container.restart:true\").index(\"*\").rollup(\"count\").last(\"5m\") > 5",
+          "message": "## 🔄 Worker Crash Loop Detected\n\n**Alert ID**: API-004\n**Severity**: Critical\n**Category**: Infrastructure\n\n### Impact\n- {{value}} worker restarts in 5 minutes\n- Inference capacity reduced\n- Possible memory leak or OOM\n\n### Recommended Actions\n1. Check worker logs for errors\n2. Review memory usage\n3. Check for OOM kills: `dmesg | grep -i oom`\n4. Increase memory limits if needed\n5. Investigate root cause\n\n@pagerduty-critical @slack-infrastructure",
+          "tags": ["service:observai-hub", "category:infrastructure", "severity:critical"],
+          "priority": 1
+        },
+        {
+          "id": "API-005",
+          "name": "GPU Node Health Issues - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_5m):avg:system.gpu.temperature{service:observai-hub} > 85 or avg(last_5m):avg:system.gpu.memory.used_pct{service:observai-hub} > 95",
+          "message": "## 🔥 GPU Node Health Critical\n\n**Alert ID**: API-005\n**Severity**: Critical\n**Category**: GPU Infrastructure\n\n### Impact\n- GPU temperature: {{temp_value}}°C (threshold: 85°C)\n- OR GPU memory: {{memory_value}}% used\n- Risk of thermal throttling or OOM\n\n### Health Checks\n- Memory leaks detected\n- CUDA OOM errors\n- GPU throttling events\n- Overheating risk\n\n### Recommended Actions\n1. Check GPU status: `nvidia-smi`\n2. Review model memory usage\n3. Check for memory leaks in inference code\n4. Restart workers if needed\n5. Scale to additional GPU nodes\n\n@pagerduty-critical @slack-ml-infrastructure",
+          "tags": ["service:observai-hub", "category:gpu", "severity:critical"],
+          "priority": 1
+        }
+      ]
+    },
+    {
+      "category": "6️⃣ SECURITY & SAFETY MONITORING",
+      "rules": [
+        {
+          "id": "SEC-001",
+          "name": "Unauthorized Access Attempts - ObservAI",
+          "type": "log alert",
+          "query": "logs(\"service:observai-hub @auth.failed:true\").index(\"*\").rollup(\"count\").last(\"5m\") by {client_ip} > 10",
+          "message": "## 🚫 Unauthorized Access Attempts\n\n**Alert ID**: SEC-001\n**Severity**: High\n**Category**: Security\n\n### Impact\n- {{value}} failed login attempts in 5 minutes\n- Possible brute-force attack from IP: {{client_ip}}\n- API key compromise attempt\n\n### Recommended Actions\n1. **Block IP immediately**: `iptables -A INPUT -s {{client_ip}} -j DROP`\n2. Review authentication logs\n3. Check for compromised credentials\n4. Enable MFA if not already active\n5. Add IP to blocklist\n\n@slack-security @incident-response",
+          "tags": ["service:observai-hub", "category:security", "severity:high", "attack:brute-force"],
+          "priority": 2
+        },
+        {
+          "id": "SEC-002",
+          "name": "Sensitive Data Leakage - ObservAI",
+          "type": "log alert",
+          "query": "logs(\"service:observai-hub (@pii.detected:true OR @phi.detected:true OR @sensitive_data:*email* OR @sensitive_data:*passport* OR @sensitive_data:*ssn*)\").index(\"*\").rollup(\"count\").last(\"10m\") > 0",
+          "message": "## ⚠️ Sensitive Data Leakage Detected\n\n**Alert ID**: SEC-002\n**Severity**: Critical\n**Category**: Data Privacy\n\n### Impact\n- {{value}} instances of sensitive data in model outputs\n- Potential GDPR/HIPAA violation\n- Legal and compliance risk\n\n### Detected Data Types\n- Email addresses\n- Phone numbers\n- Personal identifying information (PII)\n- Protected health information (PHI)\n- Passport numbers\n- Financial information (SSN, credit cards)\n\n### Immediate Actions\n1. **Quarantine affected outputs immediately**\n2. Review model training data for leakage\n3. Implement PII redaction layer\n4. Notify legal/compliance team\n5. Update data filtering rules\n\n### Compliance\n- GDPR: Article 5, 32\n- HIPAA: Privacy Rule\n- CCPA: Data minimization\n\n@slack-security @legal-compliance @privacy-team @pagerduty-security",
+          "tags": ["service:observai-hub", "category:privacy", "severity:critical", "compliance:gdpr,hipaa"],
+          "priority": 1
+        },
+        {
+          "id": "SEC-003",
+          "name": "Shadow API Calls - ObservAI",
+          "type": "log alert",
+          "query": "logs(\"service:observai-hub @api.authorization:false OR @api.key:unknown OR @request.origin:unauthorized\").index(\"*\").rollup(\"count\").last(\"5m\") > 5",
+          "message": "## 👤 Unauthorized API Access\n\n**Alert ID**: SEC-003\n**Severity**: High\n**Category**: Security\n\n### Impact\n- {{value}} unauthorized API calls in 5 minutes\n- Unknown services accessing inference endpoint\n- Possible API key theft or sharing\n\n### Recommended Actions\n1. Identify the unauthorized source\n2. Revoke compromised API keys\n3. Review API key management practices\n4. Implement API key rotation\n5. Add authentication layer\n\n@slack-security",
+          "tags": ["service:observai-hub", "category:security", "severity:high"],
+          "priority": 2
+        },
+        {
+          "id": "SEC-004",
+          "name": "Payload Injection Attempt - ObservAI",
+          "type": "log alert",
+          "query": "logs(\"service:observai-hub (@injection.sql:detected OR @injection.xss:detected OR @injection.command:detected OR @request.payload:*<script>* OR @request.payload:*SELECT * FROM*)\").index(\"*\").rollup(\"count\").last(\"5m\") > 0",
+          "message": "## 💉 Payload Injection Attack\n\n**Alert ID**: SEC-004\n**Severity**: Critical\n**Category**: Security\n\n### Impact\n- Injection attack detected in request payload\n- SQL injection, XSS, or command injection attempt\n\n### Detected Patterns\n- Raw SQL queries\n- HTML/JavaScript tags\n- Command execution attempts\n- Unusual encoding\n\n### Immediate Actions\n1. **Block the request immediately**\n2. Review input validation\n3. Add parameterized queries\n4. Implement content security policy\n5. Update WAF rules\n\n@pagerduty-security @slack-security",
+          "tags": ["service:observai-hub", "category:security", "severity:critical", "attack:injection"],
+          "priority": 1
+        },
+        {
+          "id": "SEC-005",
+          "name": "Abuse/Bot Behavior Detected - ObservAI",
+          "type": "metric alert",
+          "query": "sum(last_1m):sum:observai.api.requests{*} by {client_ip} > 1000",
+          "message": "## 🤖 Bot/Abuse Behavior Detected\n\n**Alert ID**: SEC-005\n**Severity**: High\n**Category**: Security\n\n### Impact\n- {{value}} requests in 1 minute from IP: {{client_ip}}\n- Possible DDoS or abuse attack\n- Service degradation risk\n\n### Recommended Actions\n1. **Rate limit IP immediately**\n2. Implement CAPTCHA for suspicious traffic\n3. Add IP to WAF blocklist\n4. Review for bot patterns\n5. Check if legitimate load testing\n\n@slack-security @sre-team",
+          "tags": ["service:observai-hub", "category:security", "severity:high", "attack:abuse"],
+          "priority": 2,
+          "thresholds": {
+            "critical": 2000,
+            "warning": 1000
+          }
+        }
+      ]
+    },
+    {
+      "category": "7️⃣ COST & RESOURCE OBSERVABILITY",
+      "rules": [
+        {
+          "id": "COST-001",
+          "name": "Token Usage Anomaly - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_15m):anomalies(avg:observai.llm.tokens.total{*}, 'agile', 3) >= 1",
+          "message": "## 💸 Token Usage Anomaly Detected\n\n**Alert ID**: COST-001\n**Severity**: High\n**Category**: Cost Management\n\n### Impact\n- Token usage spike detected: {{value}}% above baseline\n- Unexpected cost increase\n- Current rate: ${{hourly_cost}}/hour\n\n### Cost Projection\n- Daily: ${{daily_cost}}\n- Monthly: ${{monthly_cost}}\n\n### Recommended Actions\n1. Identify users/services with high token usage\n2. Review for abuse or legitimate traffic spike\n3. Implement token budgets per user\n4. Optimize prompts to reduce token count\n5. Consider caching common queries\n\n@slack-finops @ml-platform-team",
+          "tags": ["service:observai-hub", "category:cost", "severity:high"],
+          "priority": 2
+        },
+        {
+          "id": "COST-002",
+          "name": "GPU Idle Time Alert - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_30m):100 - avg:system.gpu.utilization{service:observai-hub} > 80",
+          "message": "## 💰 GPU Underutilization Warning\n\n**Alert ID**: COST-002\n**Severity**: Warning\n**Category**: Cost Optimization\n\n### Impact\n- GPU idle time: {{value}}% (>80%)\n- Expensive compute resources underutilized\n- Monthly waste: ${{wasted_cost}}\n\n### Recommended Actions\n1. Scale down GPU nodes if persistent\n2. Consolidate workloads\n3. Review scheduling efficiency\n4. Consider spot instances\n5. Implement autoscaling\n\n@slack-finops @ml-infrastructure",
+          "tags": ["service:observai-hub", "category:cost-optimization", "severity:warning"],
+          "priority": 3
+        },
+        {
+          "id": "COST-003",
+          "name": "Cloud Spend Forecast Spike - ObservAI",
+          "type": "metric alert",
+          "query": "forecast(avg:observai.cost.monthly_projection{*}, 'linear', 1) > 20",
+          "message": "## 📈 Cloud Spend Forecast Alert\n\n**Alert ID**: COST-003\n**Severity**: High\n**Category**: Cost Management\n\n### Impact\n- Projected monthly spend increase: {{value}}%\n- Expected bill: ${{projected_cost}}\n- Increase from baseline: ${{increase_amount}}\n\n### Cost Breakdown\n- LLM API costs: ${{llm_cost}}\n- Infrastructure: ${{infra_cost}}\n- Data storage: ${{storage_cost}}\n\n### Recommended Actions\n1. Review cost anomalies\n2. Identify cost drivers\n3. Implement cost allocation tags\n4. Optimize resource usage\n5. Set up budget alerts\n\n@slack-finops @engineering-leadership",
+          "tags": ["service:observai-hub", "category:cost-forecast", "severity:high"],
+          "priority": 2
+        },
+        {
+          "id": "COST-004",
+          "name": "Embedding Overgeneration - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_1h):rate(observai.embeddings.generated{*}) > 10000",
+          "message": "## 🔢 Embedding Generation Spike\n\n**Alert ID**: COST-004\n**Severity**: Warning\n**Category**: Cost Optimization\n\n### Impact\n- Embedding generation rate: {{value}}/hour\n- Abnormally high embedding calls\n- Common cause: User error or missing cache\n\n### Recommended Actions\n1. Check for duplicate embedding requests\n2. Verify cache is working\n3. Review embedding logic\n4. Implement deduplication\n\n@slack-ml-platform",
+          "tags": ["service:observai-hub", "category:cost", "severity:warning"],
+          "priority": 3
+        }
+      ]
+    },
+    {
+      "category": "8️⃣ HUMAN-IN-THE-LOOP & A/B TESTING",
+      "rules": [
+        {
+          "id": "HITL-001",
+          "name": "Reviewer Disagreement Spike - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_1h):avg:observai.hitl.disagreement_rate{*} > 0.3",
+          "message": "## 👥 Human-AI Disagreement Spike\n\n**Alert ID**: HITL-001\n**Severity**: High\n**Category**: Human-in-the-Loop\n\n### Impact\n- Disagreement rate: {{value}} (threshold: 30%)\n- Humans disagreeing with model predictions\n- Indicates model drift or quality issues\n\n### Possible Causes\n- Model performance degradation\n- Edge cases in recent data\n- Labeling guidelines changed\n- Real-world distribution shift\n\n### Recommended Actions\n1. Review disagreement cases manually\n2. Identify patterns in disagreements\n3. Consider model retraining\n4. Update labeling guidelines\n5. Add challenging examples to training\n\n@slack-ml-ops @data-labeling-team",
+          "tags": ["service:observai-hub", "category:hitl", "severity:high"],
+          "priority": 2,
+          "thresholds": {
+            "critical": 0.4,
+            "warning": 0.3
+          }
+        },
+        {
+          "id": "HITL-002",
+          "name": "Feedback Loop Breakdown - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_6h):rate(observai.hitl.feedback_received{*}) < 10",
+          "message": "## 🔄 Feedback Loop Breakdown\n\n**Alert ID**: HITL-002\n**Severity**: High\n**Category**: Human-in-the-Loop\n\n### Impact\n- Feedback rate: {{value}}/hour (expected: >10)\n- No labels received for delayed feedback\n- Model improvement pipeline stalled\n\n### Recommended Actions\n1. Check labeling pipeline status\n2. Verify annotators are working\n3. Review data routing\n4. Check for queue backlog\n\n@slack-data-labeling @ml-ops",
+          "tags": ["service:observai-hub", "category:hitl", "severity:high"],
+          "priority": 2
+        },
+        {
+          "id": "HITL-003",
+          "name": "A/B Test Variant Degradation - ObservAI",
+          "type": "metric alert",
+          "query": "avg(last_1h):avg:observai.ab_test.variant_b.metric{*} - avg:observai.ab_test.variant_a.metric{*} < -0.05",
+          "message": "## 🧪 A/B Test: Variant B Underperforming\n\n**Alert ID**: HITL-003\n**Severity**: High\n**Category**: A/B Testing\n\n### Impact\n- Variant B performance: {{variant_b_value}}\n- Variant A performance: {{variant_a_value}}\n- Difference: {{value}} (threshold: -5%)\n- Variant B hurting metrics compared to control\n\n### Statistical Significance\n- P-value: {{p_value}}\n- Confidence: {{confidence}}%\n- Sample size: {{sample_size}}\n\n### Recommended Actions\n1. **Consider stopping variant B rollout**\n2. Review metrics in detail\n3. Check for segment-specific effects\n4. Analyze user feedback\n5. Plan rollback if degradation persists\n\n### A/B Test Details\n- Test name: {{test_name}}\n- Duration: {{test_duration}}\n- Traffic split: {{traffic_split}}\n\n@slack-ml-ops @product-team @experimentation-platform",
+          "tags": ["service:observai-hub", "category:ab-testing", "severity:high"],
+          "priority": 2,
+          "thresholds": {
+            "critical": -0.1,
+            "warning": -0.05
+          }
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "total_rules": 40,
+    "categories": 8,
+    "version": "1.0.0",
+    "last_updated": "2025-12-11",
+    "author": "ObservAI Engineering Team",
+    "competition": "Datadog Hackathon 2025",
+    "description": "Enterprise-grade AI/ML detection rules for comprehensive observability covering data quality, model performance, LLM safety, security, cost optimization, and human-in-the-loop workflows"
+  }
+}

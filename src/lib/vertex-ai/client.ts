@@ -1,23 +1,66 @@
 /**
  * Vertex AI Client for Vite/React
- * Uses the Generative AI API with API Key authentication
+ * Two-Model Support: Gemini 2.5 Flash (Fast) and Gemini 2.5 Pro (Advanced)
+ * Uses Vite proxy to avoid CORS issues
  */
 
 const API_KEY = import.meta.env.VITE_VERTEX_AI_API_KEY;
-const BACKEND_ENDPOINT = import.meta.env.VITE_VERTEX_AI_ENDPOINT || 'http://localhost:3001';
+const USE_PROXY = import.meta.env.DEV; // Use proxy in development
+
+// Supported models with their capabilities and limits
+export enum ModelType {
+  TEXT_FAST = 'gemini-2.5-flash',               // 1K RPM, 1M TPM - Fast text generation
+  TEXT_PRO = 'gemini-2.5-pro',                  // 150 RPM, 2M TPM - Advanced reasoning
+}
+
+export interface ModelConfig {
+  name: string;
+  type: 'text' | 'image';
+  rpm: number;  // Requests per minute
+  tpm: number;  // Tokens per minute
+  rpd: number;  // Requests per day
+  capabilities: string[];
+}
+
+export const MODEL_CONFIGS: Record<ModelType, ModelConfig> = {
+  [ModelType.TEXT_FAST]: {
+    name: 'Gemini 2.5 Flash',
+    type: 'text',
+    rpm: 1000,
+    tpm: 1_000_000,
+    rpd: 10_000,
+    capabilities: ['text-generation', 'fast-response', 'code-generation'],
+  },
+  [ModelType.TEXT_PRO]: {
+    name: 'Gemini 2.5 Pro',
+    type: 'text',
+    rpm: 150,
+    tpm: 2_000_000,
+    rpd: 10_000,
+    capabilities: ['advanced-reasoning', 'complex-tasks', 'long-context'],
+  },
+};
 
 export interface PredictionRequest {
   prompt: string;
   maxTokens?: number;
   temperature?: number;
-  model?: string;
+  model?: ModelType | string;
+  // Image generation specific
+  imageConfig?: {
+    numberOfImages?: number;
+    aspectRatio?: string;
+    negativeSeed?: number;
+  };
 }
 
 export interface PredictionResponse {
-  text: string;
+  text?: string;
+  imageUrl?: string;
   tokens: number;
   latency: number;
   model: string;
+  modelType: 'text' | 'image';
 }
 
 export interface VertexAIMetrics {
@@ -26,6 +69,12 @@ export interface VertexAIMetrics {
   failedRequests: number;
   averageLatency: number;
   tokensUsed: number;
+  // Per-model metrics
+  modelUsage: Record<string, {
+    requests: number;
+    tokens: number;
+    avgLatency: number;
+  }>;
 }
 
 class VertexAIClient {
@@ -35,21 +84,58 @@ class VertexAIClient {
     failedRequests: 0,
     averageLatency: 0,
     tokensUsed: 0,
+    modelUsage: {},
   };
 
+  constructor() {
+    if (!API_KEY) {
+      throw new Error('VITE_VERTEX_AI_API_KEY is not configured');
+    }
+  }
+
   /**
-   * Make a prediction using Gemini API
+   * Get the base URL for API requests (text models)
+   */
+  private getTextModelUrl(model: string): string {
+    if (USE_PROXY) {
+      return `/api/gemini/v1beta/models/${model}:generateContent`;
+    } else {
+      return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+    }
+  }
+
+  /**
+   * Track model-specific metrics
+   */
+  private trackModelUsage(model: string, tokens: number, latency: number) {
+    if (!this.metrics.modelUsage[model]) {
+      this.metrics.modelUsage[model] = {
+        requests: 0,
+        tokens: 0,
+        avgLatency: 0,
+      };
+    }
+
+    const usage = this.metrics.modelUsage[model];
+    usage.requests++;
+    usage.tokens += tokens;
+    usage.avgLatency = (usage.avgLatency * (usage.requests - 1) + latency) / usage.requests;
+  }
+
+  /**
+   * Make a prediction using Gemini Text API
    */
   async predict(request: PredictionRequest): Promise<PredictionResponse> {
     const startTime = Date.now();
     this.metrics.totalRequests++;
 
     try {
-      // Use v1 API with gemini-2.0-flash model (or gemini-pro as fallback)
-      const model = request.model || 'gemini-2.0-flash';
-      const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${API_KEY}`;
+      const modelName = (request.model as ModelType) || ModelType.TEXT_FAST;
 
-      const response = await fetch(url, {
+      // Text generation
+      const url = this.getTextModelUrl(modelName as string);
+
+      const response = await fetch(`${url}?key=${API_KEY}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -69,7 +155,7 @@ class VertexAIClient {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error?.message || 'Prediction failed');
+        throw new Error(error.error?.message || `API request failed: ${response.status}`);
       }
 
       const data = await response.json();
@@ -82,12 +168,14 @@ class VertexAIClient {
       this.metrics.successfulRequests++;
       this.metrics.tokensUsed += tokens;
       this.updateAverageLatency(latency);
+      this.trackModelUsage(modelName as string, tokens, latency);
 
       return {
         text,
         tokens,
         latency,
-        model,
+        model: modelName as string,
+        modelType: 'text',
       };
     } catch (error) {
       this.metrics.failedRequests++;
@@ -96,13 +184,21 @@ class VertexAIClient {
   }
 
   /**
-   * Stream a prediction response
+   * Stream a prediction response (text models only)
    */
   async *predictStream(request: PredictionRequest): AsyncGenerator<string> {
-    const model = request.model || 'gemini-2.0-flash';
-    const url = `https://generativelanguage.googleapis.com/v1/models/${model}:streamGenerateContent?key=${API_KEY}`;
+    const modelName = (request.model as ModelType) || ModelType.TEXT_FAST;
+    const config = MODEL_CONFIGS[modelName as ModelType];
 
-    const response = await fetch(url, {
+    if (config?.type !== 'text') {
+      throw new Error('Streaming is only supported for text models');
+    }
+
+    const baseUrl = USE_PROXY 
+      ? `/api/gemini/v1beta/models/${modelName}:streamGenerateContent`
+      : `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent`;
+
+    const response = await fetch(`${baseUrl}?key=${API_KEY}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -153,6 +249,30 @@ class VertexAIClient {
         }
       }
     }
+  }
+
+  /**
+   * Helper: Get recommended model for specific task
+   */
+  static getModelForTask(task: 'fast' | 'complex'): ModelType {
+    switch (task) {
+      case 'fast':
+        return ModelType.TEXT_FAST;
+      case 'complex':
+        return ModelType.TEXT_PRO;
+      default:
+        return ModelType.TEXT_FAST;
+    }
+  }
+
+  /**
+   * Get all available models with their configs
+   */
+  static getAvailableModels(): Array<{ model: ModelType; config: ModelConfig }> {
+    return Object.entries(MODEL_CONFIGS).map(([model, config]) => ({
+      model: model as ModelType,
+      config,
+    }));
   }
 
   /**
@@ -240,6 +360,7 @@ Response format:
       failedRequests: 0,
       averageLatency: 0,
       tokensUsed: 0,
+      modelUsage: {},
     };
   }
 

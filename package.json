@@ -16,8 +16,9 @@
     "vertex:test": "cd vertex-ai/scripts && ./06-test-prediction.sh"
   },
   "dependencies": {
-    "@datadog/browser-logs": "^6.24.1",
+    "@datadog/browser-logs": "^6.25.0",
     "@datadog/browser-rum": "^6.24.1",
+    "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
@@ -56,6 +57,7 @@
     "cmdk": "^1.1.1",
     "cors": "^2.8.5",
     "date-fns": "^3.6.0",
+    "dd-trace": "^5.80.0",
     "embla-carousel-react": "^8.6.0",
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",

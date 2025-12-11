@@ -1,0 +1,74 @@
+{
+  "name": "ObservAI Hub - Vertex AI Health Check",
+  "type": "api",
+  "subtype": "http",
+  "message": "## Vertex AI Synthetic Monitor\n\nThis synthetic test monitors the health and performance of the Vertex AI integration.\n\n**Test Frequency**: Every 5 minutes\n**Locations**: Multiple regions\n\n**What it checks**:\n- API availability\n- Response latency\n- Token generation\n- Error rates\n\n@slack-alerts",
+  "tags": [
+    "env:production",
+    "service:vertex-ai",
+    "team:observai",
+    "synthetic:api-test"
+  ],
+  "config": {
+    "request": {
+      "method": "POST",
+      "url": "https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"contents\":[{\"parts\":[{\"text\":\"Hello, this is a synthetic monitoring test. Please respond with: OK\"}]}],\"generationConfig\":{\"maxOutputTokens\":50,\"temperature\":0.1}}",
+      "timeout": 60
+    },
+    "assertions": [
+      {
+        "type": "statusCode",
+        "operator": "is",
+        "target": 200
+      },
+      {
+        "type": "responseTime",
+        "operator": "lessThan",
+        "target": 3000
+      },
+      {
+        "type": "body",
+        "operator": "contains",
+        "target": "candidates"
+      },
+      {
+        "type": "body",
+        "operator": "doesNotContain",
+        "target": "error"
+      }
+    ],
+    "configVariables": [
+      {
+        "name": "API_KEY",
+        "type": "global",
+        "secure": true,
+        "example": "YOUR_VERTEX_AI_API_KEY"
+      }
+    ]
+  },
+  "options": {
+    "tick_every": 300,
+    "min_location_failed": 1,
+    "min_failure_duration": 0,
+    "monitor_options": {
+      "renotify_interval": 0
+    },
+    "retry": {
+      "count": 2,
+      "interval": 300
+    },
+    "follow_redirects": true,
+    "accept_self_signed": false
+  },
+  "locations": [
+    "aws:us-east-1",
+    "aws:us-west-2",
+    "aws:eu-west-1",
+    "aws:ap-southeast-1"
+  ],
+  "status": "live"
+}
