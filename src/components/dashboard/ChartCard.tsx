@@ -46,6 +46,9 @@ export function ChartCard({
 }: ChartCardProps) {
   const chartColor = colorMap[color];
 
+  // Ensure we always have valid data array
+  const chartData = Array.isArray(data) && data.length > 0 ? data : [{ name: 'No data', value: 0 }];
+
   return (
     <div
       className={cn(
@@ -63,7 +66,7 @@ export function ChartCard({
       <div style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
           {type === "area" ? (
-            <AreaChart data={data}>
+            <AreaChart data={chartData}>
               <defs>
                 <linearGradient id={`gradient-${color}`} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={chartColor} stopOpacity={0.3} />
@@ -103,7 +106,7 @@ export function ChartCard({
               />
             </AreaChart>
           ) : type === "bar" ? (
-            <BarChart data={data}>
+            <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis
                 dataKey={xAxisKey}
@@ -128,7 +131,7 @@ export function ChartCard({
               <Bar dataKey={dataKey} fill={chartColor} radius={[4, 4, 0, 0]} />
             </BarChart>
           ) : (
-            <LineChart data={data}>
+            <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis
                 dataKey={xAxisKey}

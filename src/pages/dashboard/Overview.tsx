@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { ChartCard } from "@/components/dashboard/ChartCard";
 import { AlertCard } from "@/components/dashboard/AlertCard";
+import { TimeRangeSelector, TimeRangeOption } from "@/components/dashboard/TimeRangeSelector";
 import {
   useMetricsSummary,
   useLLMMetrics,
@@ -23,11 +25,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Overview() {
-  const { metrics, loading: metricsLoading } = useMetricsSummary(5000);
-  const { metrics: llmMetrics } = useLLMMetrics(5000);
-  const { data: requestsData } = useTimeSeriesData('requests', '1h', 10000);
-  const { data: latencyData } = useTimeSeriesData('latency', '1h', 10000);
-  const { data: tokensData } = useTimeSeriesData('tokens', '1h', 10000);
+  const [timeRange, setTimeRange] = useState<TimeRangeOption>('1h');
+  
+  const { metrics, loading: metricsLoading } = useMetricsSummary(5000, timeRange);
+  const { metrics: llmMetrics } = useLLMMetrics(5000, timeRange);
+  const { data: requestsData } = useTimeSeriesData('requests', timeRange, 10000);
+  const { data: latencyData } = useTimeSeriesData('latency', timeRange, 10000);
+  const { data: tokensData } = useTimeSeriesData('tokens', timeRange, 10000);
   const { alerts, activeCount, acknowledge } = useAlerts(5000);
   const { services } = useServiceHealth(30000);
 
@@ -46,20 +50,26 @@ export default function Overview() {
   }
 
   // Transform time series for charts
-  const requestsChartData = requestsData.map((d) => ({
-    name: d.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    value: d.value,
-  }));
+  const requestsChartData = requestsData.length > 0 
+    ? requestsData.map((d) => ({
+        name: d.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        value: d.value,
+      }))
+    : [{ name: 'Now', value: 0 }];
 
-  const latencyChartData = latencyData.map((d) => ({
-    name: d.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    value: Math.round(d.value),
-  }));
+  const latencyChartData = latencyData.length > 0
+    ? latencyData.map((d) => ({
+        name: d.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        value: Math.round(d.value),
+      }))
+    : [{ name: 'Now', value: 0 }];
 
-  const tokensChartData = tokensData.map((d) => ({
-    name: d.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    value: d.value,
-  }));
+  const tokensChartData = tokensData.length > 0
+    ? tokensData.map((d) => ({
+        name: d.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        value: d.value,
+      }))
+    : [{ name: 'Now', value: 0 }];
 
   // Transform alerts for AlertCard component
   const alertCards = alerts
@@ -88,10 +98,13 @@ export default function Overview() {
             Real-time LLM observability metrics
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={metricsLoading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${metricsLoading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-3">
+          <TimeRangeSelector selected={timeRange} onChange={setTimeRange} />
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={metricsLoading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${metricsLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Metrics Grid */}
@@ -179,8 +192,8 @@ export default function Overview() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard
           title="Request Volume"
-          subtitle="Requests per minute (last hour)"
-          data={requestsChartData.length > 0 ? requestsChartData : [{ name: 'Now', value: 0 }]}
+          subtitle={`Requests per minute (${timeRange === 'all' ? 'from beginning' : timeRange === '1h' ? 'last hour' : 'last 24 hours'})`}
+          data={requestsChartData}
           dataKey="value"
           type="area"
           color="primary"
@@ -188,8 +201,8 @@ export default function Overview() {
         />
         <ChartCard
           title="Response Latency"
-          subtitle="Average latency in ms (last hour)"
-          data={latencyChartData.length > 0 ? latencyChartData : [{ name: 'Now', value: 0 }]}
+          subtitle={`Average latency in ms (${timeRange === 'all' ? 'from beginning' : timeRange === '1h' ? 'last hour' : 'last 24 hours'})`}
+          data={latencyChartData}
           dataKey="value"
           type="line"
           color="accent"
@@ -201,8 +214,8 @@ export default function Overview() {
         <div className="lg:col-span-2">
           <ChartCard
             title="Token Usage"
-            subtitle="Tokens consumed per minute"
-            data={tokensChartData.length > 0 ? tokensChartData : [{ name: 'Now', value: 0 }]}
+            subtitle={`Tokens consumed per minute (${timeRange === 'all' ? 'from beginning' : timeRange === '1h' ? 'last hour' : 'last 24 hours'})`}
+            data={tokensChartData}
             dataKey="value"
             type="bar"
             color="chart3"

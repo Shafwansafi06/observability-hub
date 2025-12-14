@@ -53,6 +53,272 @@
 
 ---
 
+## 🚀 ObservAI SDK - Track Any Project
+
+**NEW!** Track LLM usage from ANY project with our TypeScript/JavaScript SDK:
+
+```bash
+npm install @observai/sdk
+```
+
+```typescript
+import { ObservAIClient } from '@observai/sdk';
+
+const client = new ObservAIClient({
+  apiKey: process.env.VERTEX_AI_API_KEY,
+  userId: 'user-123',
+  projectName: 'my-app'
+});
+
+// Automatically tracked!
+const result = await client.generateContent(
+  'gemini-2.5-flash',
+  'Hello, world!'
+);
+
+console.log(result.tracking);
+// {
+//   request_id: 'req_...',
+//   latency_ms: 1234,
+//   tokens_used: 567,
+//   cost_estimate_usd: 0.000043,
+//   tracked: true
+// }
+```
+
+### SDK Features
+
+- ✨ **Drop-in Replacement** - Works with @google/generative-ai
+- 📊 **Auto-Tracking** - Every request sent to your dashboard
+- 💰 **Cost Calculation** - Real-time per-model pricing
+- 🎯 **Quality Analysis** - Coherence, toxicity, hallucination detection
+- ⚡ **Batch Mode** - Efficient data transmission
+- 🛡️ **Error Resilience** - Auto-retry with exponential backoff
+- 🔒 **Privacy** - Sanitizes sensitive data before transmission
+
+**[📖 Full SDK Documentation](./sdk/README.md)** • **[⚙️ Setup Guide](./sdk/SETUP.md)** • **[💻 Examples](./sdk/examples/)**
+
+---
+
+## 🔐 Authentication & Security
+
+ObservAI Hub uses **Supabase Authentication** with multi-provider support:
+
+### Supported Authentication Methods
+
+| Method | Status | Description |
+|--------|--------|-------------|
+| 📧 **Email/Password** | ✅ Enabled | Traditional signup/login |
+| 🔑 **Google OAuth** | ✅ Enabled | One-click Google sign-in |
+
+### Security Features
+
+```mermaid
+graph LR
+    A[User Login] --> B{Auth Provider}
+    B -->|Email/Password| C[Supabase Auth]
+    B -->|Google OAuth| C
+    C --> D[Generate JWT Token]
+    D --> E[Store in Context]
+    E --> F[Protected Routes]
+    F --> G[RLS Policies]
+    G --> H[User-Specific Data]
+    
+    style C fill:#22c55e
+    style D fill:#3b82f6
+    style G fill:#ef4444
+```
+
+#### Row Level Security (RLS)
+- **Per-User Data Isolation**: Each user can only access their own data
+- **Automatic Filtering**: `auth.uid() = user_id` enforced on all tables
+- **11 Secured Tables**: llm_requests, alerts, logs, cost_tracking, etc.
+- **Protected Routes**: Dashboard requires authentication
+
+#### Data Protection
+- ✅ HTTPS-only communication
+- ✅ JWT tokens with auto-refresh
+- ✅ API keys stored in environment variables
+- ✅ Sensitive data sanitization before storage
+- ✅ No hardcoded credentials
+
+### Getting Started with Authentication
+
+```typescript
+// 1. Sign Up
+await signUp(email, password, fullName);
+
+// 2. Sign In
+await signIn(email, password);
+
+// 3. Google OAuth
+await signInWithGoogle(); // Redirects to Google
+
+// 4. Auto-Session Management
+// Sessions persist automatically
+// JWT tokens refresh automatically
+
+// 5. Protected Access
+// Dashboard routes require authentication
+// Unauthorized users redirected to /login
+```
+
+---
+
+## 🏗️ Complete System Architecture
+
+```mermaid
+graph TB
+    subgraph "External Projects"
+        A1[React App]
+        A2[Next.js API]
+        A3[Express Server]
+        A4[AWS Lambda]
+    end
+    
+    subgraph "ObservAI SDK"
+        B1[Client Initialization]
+        B2[Intercept LLM Calls]
+        B3[Calculate Metrics]
+        B4[Quality Analysis]
+        B5[Batch Manager]
+    end
+    
+    subgraph "Google Cloud"
+        C1[Vertex AI API]
+        C2[Gemini 2.5 Flash]
+        C3[Gemini 2.5 Pro]
+    end
+    
+    subgraph "Supabase Backend"
+        D1[Edge Function<br/>track-llm]
+        D2[PostgreSQL Database]
+        D3[Authentication]
+        D4[Row Level Security]
+    end
+    
+    subgraph "ObservAI Dashboard"
+        E1[Login/Signup]
+        E2[Overview Dashboard]
+        E3[LLM Metrics]
+        E4[Anomalies & Alerts]
+        E5[Lyra AI Optimizer]
+        E6[Log Stream]
+    end
+    
+    subgraph "Monitoring & Analytics"
+        F1[Datadog RUM]
+        F2[Datadog APM]
+        F3[Datadog Logs]
+        F4[Custom Dashboards]
+    end
+    
+    A1 --> B1
+    A2 --> B1
+    A3 --> B1
+    A4 --> B1
+    
+    B1 --> B2
+    B2 --> C1
+    C1 --> C2
+    C1 --> C3
+    C2 --> B3
+    C3 --> B3
+    
+    B3 --> B4
+    B4 --> B5
+    B5 -->|HTTPS POST| D1
+    
+    D1 --> D2
+    D1 --> D4
+    D3 --> D4
+    D2 --> D4
+    
+    D2 -->|Real-time Updates| E2
+    D2 --> E3
+    D2 --> E4
+    D2 --> E6
+    
+    E1 --> D3
+    E2 --> F1
+    E3 --> F2
+    E4 --> F3
+    
+    F1 --> F4
+    F2 --> F4
+    F3 --> F4
+    
+    style B1 fill:#6366f1
+    style D1 fill:#22c55e
+    style D2 fill:#3b82f6
+    style D3 fill:#ef4444
+    style E5 fill:#ec4899
+    style F4 fill:#f59e0b
+```
+
+### Data Flow Sequence
+
+```mermaid
+sequenceDiagram
+    participant User as User Code
+    participant SDK as ObservAI SDK
+    participant AI as Vertex AI
+    participant Edge as Edge Function
+    participant DB as PostgreSQL
+    participant Dash as Dashboard
+    
+    User->>SDK: generateContent(model, prompt)
+    activate SDK
+    
+    SDK->>SDK: Start Timer
+    SDK->>AI: Forward Request
+    activate AI
+    AI->>AI: Generate Response
+    AI-->>SDK: Return Response + Metadata
+    deactivate AI
+    
+    SDK->>SDK: Stop Timer (latency_ms)
+    SDK->>SDK: Calculate Tokens
+    SDK->>SDK: Calculate Cost
+    SDK->>SDK: Analyze Quality<br/>(coherence, toxicity, hallucination)
+    
+    alt Batch Mode Enabled
+        SDK->>SDK: Add to Batch Buffer
+        SDK->>SDK: Check Conditions
+        alt Batch Full or Timeout
+            SDK->>Edge: POST /track-llm (batch)
+        end
+    else Immediate Mode
+        SDK->>Edge: POST /track-llm (single)
+    end
+    
+    activate Edge
+    Edge->>Edge: Validate Request
+    Edge->>Edge: Check Anomalies<br/>(latency, cost, toxicity)
+    
+    alt Anomaly Detected
+        Edge->>DB: INSERT INTO alerts
+    end
+    
+    Edge->>DB: INSERT INTO llm_requests
+    activate DB
+    DB->>DB: Apply RLS Policies
+    DB->>DB: Update Indexes
+    DB-->>Edge: Confirmation
+    deactivate DB
+    
+    Edge-->>SDK: Success Response
+    deactivate Edge
+    
+    SDK-->>User: Return Result + Tracking
+    deactivate SDK
+    
+    DB->>Dash: Real-time Update<br/>(Supabase Realtime)
+    Dash->>Dash: Refresh Charts & Metrics
+```
+
+---
+
 ## ✨ Features
 
 | Feature | Description | Impact |

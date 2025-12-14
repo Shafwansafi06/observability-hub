@@ -12,16 +12,20 @@ import {
   ServiceHealth,
 } from '@/lib/observability-service';
 
+export type TimeRangeOption = 'all' | '1h' | '24h';
+
 /**
- * Hook for metrics summary with auto-refresh
+ * Hook for metrics summary with auto-refresh and time range support
  */
-export function useMetricsSummary(refreshInterval = 5000) {
+export function useMetricsSummary(refreshInterval = 5000, timeRange: 'all' | '1h' | '24h' = '1h') {
   const [metrics, setMetrics] = useState<MetricsSummary>(observabilityService.getMetricsSummary());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const updateMetrics = () => {
-      setMetrics(observabilityService.getMetricsSummary());
+    const updateMetrics = async () => {
+      // Try to fetch from Supabase first
+      const dbMetrics = await observabilityService.getMetricsSummaryFromDB(timeRange);
+      setMetrics(dbMetrics);
       setLoading(false);
     };
 
@@ -29,21 +33,22 @@ export function useMetricsSummary(refreshInterval = 5000) {
     const interval = setInterval(updateMetrics, refreshInterval);
 
     return () => clearInterval(interval);
-  }, [refreshInterval]);
+  }, [refreshInterval, timeRange]);
 
   return { metrics, loading };
 }
 
 /**
- * Hook for LLM metrics with auto-refresh
+ * Hook for LLM metrics with auto-refresh and time range support
  */
-export function useLLMMetrics(refreshInterval = 5000) {
+export function useLLMMetrics(refreshInterval = 5000, timeRange: 'all' | '1h' | '24h' = '1h') {
   const [metrics, setMetrics] = useState<LLMMetrics>(observabilityService.getLLMMetrics());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const updateMetrics = () => {
-      setMetrics(observabilityService.getLLMMetrics());
+    const updateMetrics = async () => {
+      const dbMetrics = await observabilityService.getLLMMetricsFromDB(timeRange);
+      setMetrics(dbMetrics);
       setLoading(false);
     };
 
@@ -51,7 +56,7 @@ export function useLLMMetrics(refreshInterval = 5000) {
     const interval = setInterval(updateMetrics, refreshInterval);
 
     return () => clearInterval(interval);
-  }, [refreshInterval]);
+  }, [refreshInterval, timeRange]);
 
   return { metrics, loading };
 }
@@ -79,17 +84,17 @@ export function useLogs(limit = 50, refreshInterval = 3000) {
 }
 
 /**
- * Hook for alerts with actions
+ * Hook for alerts with actions and Supabase integration
  */
 export function useAlerts(refreshInterval = 5000) {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [activeCount, setActiveCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const updateAlerts = useCallback(() => {
-    const allAlerts = observabilityService.getAllAlerts();
-    const active = observabilityService.getActiveAlerts();
-    setAlerts(allAlerts);
+  const updateAlerts = useCallback(async () => {
+    const dbAlerts = await observabilityService.getAlertsFromDB();
+    const active = dbAlerts.filter(a => a.status === 'active');
+    setAlerts(dbAlerts);
     setActiveCount(active.length);
     setLoading(false);
   }, []);
@@ -100,13 +105,13 @@ export function useAlerts(refreshInterval = 5000) {
     return () => clearInterval(interval);
   }, [refreshInterval, updateAlerts]);
 
-  const acknowledge = useCallback((alertId: string) => {
-    observabilityService.acknowledgeAlert(alertId);
+  const acknowledge = useCallback(async (alertId: string) => {
+    await observabilityService.acknowledgeAlertDB(alertId);
     updateAlerts();
   }, [updateAlerts]);
 
-  const resolve = useCallback((alertId: string) => {
-    observabilityService.resolveAlert(alertId);
+  const resolve = useCallback(async (alertId: string) => {
+    await observabilityService.resolveAlertDB(alertId);
     updateAlerts();
   }, [updateAlerts]);
 
@@ -114,19 +119,20 @@ export function useAlerts(refreshInterval = 5000) {
 }
 
 /**
- * Hook for time series chart data
+ * Hook for time series chart data with Supabase integration and time range support
  */
 export function useTimeSeriesData(
-  metric: 'requests' | 'latency' | 'tokens' | 'errors',
-  duration: '1h' | '6h' | '24h' = '1h',
+  metric: 'requests' | 'latency' | 'tokens' | 'errors' | 'cost',
+  duration: 'all' | '1h' | '24h' = '1h',
   refreshInterval = 10000
 ) {
   const [data, setData] = useState<Array<{ timestamp: Date; value: number }>>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const updateData = () => {
-      setData(observabilityService.getTimeSeriesData(metric, duration));
+    const updateData = async () => {
+      const timeSeriesData = await observabilityService.getTimeSeriesDataDB(metric, duration);
+      setData(timeSeriesData);
       setLoading(false);
     };
 

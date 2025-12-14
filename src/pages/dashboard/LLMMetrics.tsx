@@ -3,7 +3,8 @@ import { MetricCard } from "@/components/dashboard/MetricCard";
 import { ChartCard } from "@/components/dashboard/ChartCard";
 import { PromptOptimizerPanel } from "@/components/dashboard/PromptOptimizerPanel";
 import { cn } from "@/lib/utils";
-import { useLLMMetrics, useTrackedLLMRequest, useTimeSeriesData } from "@/hooks/use-observability";
+import { useLLMMetrics, useTrackedLLMRequest, useTimeSeriesData, TimeRangeOption } from "@/hooks/use-observability";
+import { TimeRangeSelector } from "@/components/dashboard/TimeRangeSelector";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,6 +25,7 @@ import {
 } from "lucide-react";
 
 export default function LLMMetrics() {
+  const [timeRange, setTimeRange] = useState<TimeRangeOption>('1h');
   const [prompt, setPrompt] = useState("");
   const [selectedModel, setSelectedModel] = useState<ModelType>(ModelType.TEXT_FAST);
   const [response, setResponse] = useState("");
@@ -33,9 +35,9 @@ export default function LLMMetrics() {
   const [lastCost, setLastCost] = useState<number>(0);
   const [lastPromptAnalysis, setLastPromptAnalysis] = useState<any>(null);
   const { makeRequest, loading, error } = useTrackedLLMRequest();
-  const { metrics } = useLLMMetrics(5000);
-  const { data: latencyData } = useTimeSeriesData('latency', '1h', 10000);
-  const { data: requestsData } = useTimeSeriesData('requests', '1h', 10000);
+  const { metrics } = useLLMMetrics(5000, timeRange);
+  const { data: latencyData } = useTimeSeriesData('latency', timeRange, 10000);
+  const { data: requestsData } = useTimeSeriesData('requests', timeRange, 10000);
 
   // Simple cost calculation helper
   const calculateCost = (model: string, tokensIn: number, tokensOut: number): number => {
@@ -139,11 +141,14 @@ export default function LLMMetrics() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">LLM Metrics</h1>
-        <p className="text-muted-foreground mt-1">
-          Deep observability into your language model performance
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">LLM Metrics</h1>
+          <p className="text-muted-foreground mt-1">
+            Deep observability into your language model performance
+          </p>
+        </div>
+        <TimeRangeSelector selected={timeRange} onChange={setTimeRange} />
       </div>
 
       {/* Key Metrics */}

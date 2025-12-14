@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { AlertCard } from "@/components/dashboard/AlertCard";
 import { ChartCard } from "@/components/dashboard/ChartCard";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useAlerts, useTimeSeriesData } from "@/hooks/use-observability";
+import { useAlerts, useTimeSeriesData, TimeRangeOption } from "@/hooks/use-observability";
 import { observabilityService } from "@/lib/observability-service";
+import { TimeRangeSelector } from "@/components/dashboard/TimeRangeSelector";
 import {
   AlertTriangle,
   Bell,
@@ -23,8 +25,9 @@ const detectionRules = [
 ];
 
 export default function Anomalies() {
+  const [timeRange, setTimeRange] = useState<TimeRangeOption>('24h');
   const { alerts, activeCount, acknowledge, resolve } = useAlerts(5000);
-  const { data: errorsData } = useTimeSeriesData('errors', '24h', 30000);
+  const { data: errorsData } = useTimeSeriesData('errors', timeRange, 30000);
   
   // Calculate counts
   const criticalCount = alerts.filter((a) => a.severity === "critical" && a.status === "active").length;
@@ -57,12 +60,16 @@ export default function Anomalies() {
   }
 
   const handleCreateDemoAlert = () => {
-    observabilityService.addAlert({
+    observabilityService.addAlertDB({
       title: 'High Latency Detected',
       description: 'Model inference latency exceeded 1000ms threshold',
       severity: 'warning',
       source: 'Performance Monitor',
     });
+  };
+
+  const handleResolve = (alertId: string) => {
+    resolve(alertId);
   };
 
   return (
@@ -75,7 +82,8 @@ export default function Anomalies() {
             AI-specific failure modes and automated incident management
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <TimeRangeSelector selected={timeRange} onChange={setTimeRange} />
           <Button variant="outline" size="sm">
             <Filter className="h-4 w-4 mr-1" />
             Filter
@@ -146,7 +154,7 @@ export default function Anomalies() {
                   key={alert.id}
                   alert={alert}
                   onAcknowledge={(id) => acknowledge(id)}
-                  onInvestigate={(id) => console.log("Investigate:", id)}
+                  onInvestigate={(id) => handleResolve(id)}
                 />
               ))
             ) : (
@@ -174,7 +182,7 @@ export default function Anomalies() {
         <div className="space-y-6">
           <ChartCard
             title="Error Trend"
-            subtitle="Last 24 hours"
+            subtitle={timeRange === 'all' ? 'From beginning' : timeRange === '1h' ? 'Last hour' : 'Last 24 hours'}
             data={anomalyTrendData.length > 0 ? anomalyTrendData : [{ name: 'Now', value: 0 }]}
             dataKey="value"
             type="bar"
