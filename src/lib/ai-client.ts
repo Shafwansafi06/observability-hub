@@ -17,7 +17,7 @@
 // ===== TYPES =====
 export interface AIRequest {
   prompt: string;
-  model?: 'gemini-2.5-flash' | 'gemini-2.5-pro';
+  model?: 'gemini-2.5-flash' | 'gemini-2.5-pro'; // ✅ Correct Vertex AI model names
   temperature?: number;
   maxTokens?: number;
 }

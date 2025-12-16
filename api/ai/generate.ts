@@ -18,10 +18,18 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // ===== CONFIGURATION =====
 // Read from server-side environment variables (NO VITE_ prefix)
-const VERTEX_AI_API_KEY = process.env.VERTEX_AI_API_KEY;
-const API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
+const GCP_PROJECT_ID = process.env.GCP_PROJECT_ID || process.env.VITE_GCP_PROJECT_ID;
+const VERTEX_AI_LOCATION = process.env.VERTEX_AI_LOCATION || 'us-central1';
+const VERTEX_AI_API_KEY = process.env.VERTEX_AI_API_KEY; // For Google AI Studio fallback
+const GCP_SERVICE_ACCOUNT_KEY = process.env.GCP_SERVICE_ACCOUNT_KEY; // JSON string of service account
 const MAX_PROMPT_LENGTH = 32000; // Gemini's context window limit
 const MAX_TOKENS = 8192;
+
+// Vertex AI REST endpoint
+const VERTEX_AI_BASE_URL = `https://${VERTEX_AI_LOCATION}-aiplatform.googleapis.com/v1/projects/${GCP_PROJECT_ID}/locations/${VERTEX_AI_LOCATION}/publishers/google/models`;
+
+// Cache for access token
+let cachedToken: { token: string; expiry: number } | null = null;
 
 // Rate limiting configuration (simple in-memory store)
 // In production, use Redis or Vercel KV
@@ -140,6 +148,70 @@ function sanitizeError(error: any): string {
     .replace(/Bearer\s+\S+/gi, 'Bearer [REDACTED]');
 }
 
+/**
+ * Get OAuth2 access token for Vertex AI
+ * Uses service account JSON for authentication
+ */
+async function getAccessToken(): Promise<string> {
+  // Check cache first (tokens are valid for ~1 hour)
+  if (cachedToken && cachedToken.expiry > Date.now()) {
+    return cachedToken.token;
+  }
+
+  // If using API key (Google AI Studio fallback)
+  if (VERTEX_AI_API_KEY && !GCP_SERVICE_ACCOUNT_KEY) {
+    console.warn('[AI Gateway] Using API key fallback (not recommended for production)');
+    return VERTEX_AI_API_KEY;
+  }
+
+  // Parse service account JSON
+  if (!GCP_SERVICE_ACCOUNT_KEY) {
+    throw new Error('GCP_SERVICE_ACCOUNT_KEY not configured');
+  }
+
+  const serviceAccount = JSON.parse(GCP_SERVICE_ACCOUNT_KEY);
+  const { client_email, private_key } = serviceAccount;
+
+  // Create JWT for Google OAuth2
+  const now = Math.floor(Date.now() / 1000);
+  const jwtHeader = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+  const jwtPayload = Buffer.from(JSON.stringify({
+    iss: client_email,
+    scope: 'https://www.googleapis.com/auth/cloud-platform',
+    aud: 'https://oauth2.googleapis.com/token',
+    exp: now + 3600,
+    iat: now,
+  })).toString('base64url');
+
+  // Sign JWT
+  const crypto = await import('crypto');
+  const sign = crypto.createSign('RSA-SHA256');
+  sign.update(`${jwtHeader}.${jwtPayload}`);
+  const signature = sign.sign(private_key, 'base64url');
+  const jwt = `${jwtHeader}.${jwtPayload}.${signature}`;
+
+  // Exchange JWT for access token
+  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+  });
+
+  if (!tokenResponse.ok) {
+    throw new Error('Failed to get access token');
+  }
+
+  const tokenData = await tokenResponse.json();
+  
+  // Cache token (expires in ~1 hour, cache for 55 minutes)
+  cachedToken = {
+    token: tokenData.access_token,
+    expiry: Date.now() + 55 * 60 * 1000,
+  };
+
+  return tokenData.access_token;
+}
+
 // ===== MAIN HANDLER =====
 export default async function handler(
   req: VercelRequest,
@@ -202,34 +274,94 @@ export default async function handler(
       return;
     }
 
-    const { prompt, model = 'gemini-2.5-flash', temperature = 0.7, maxTokens = 1024 } = req.body as GenerateRequest;
+    const { prompt, model = 'gemini-2.5-flash', temperature = 0.7, maxTokens = 8024 } = req.body as GenerateRequest;
+
+    // ✅ CORRECT: Vertex AI model names (no mapping needed)
+    // gemini-2.5-flash → Fast, cheap, real-time
+    // gemini-2.5-pro → Powerful, reasoning, analysis
+    const actualModel = model === 'gemini-2.5-pro' ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
 
     // Log request (without sensitive data)
     console.log('[AI Gateway] Request:', {
       ip: clientIP.substring(0, 8) + '...',
-      model,
+      model: actualModel,
       promptLength: prompt.length,
       timestamp: new Date().toISOString(),
     });
 
-    // Call Vertex AI
-    const apiUrl = `${API_BASE_URL}/models/${model}:generateContent?key=${VERTEX_AI_API_KEY}`;
-    
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: prompt }],
-        }],
-        generationConfig: {
-          temperature,
-          maxOutputTokens: maxTokens,
+    // ✅ CORRECT: Try Vertex AI first, fallback to API key if needed
+    let response: Response;
+    let usedVertexAI = false;
+
+    try {
+      // Attempt Vertex AI with service account (production-grade)
+      if (GCP_SERVICE_ACCOUNT_KEY) {
+        const apiUrl = `${VERTEX_AI_BASE_URL}/${actualModel}:generateContent`;
+        const accessToken = await getAccessToken();
+        
+        response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{
+              role: 'user',
+              parts: [{ text: prompt }],
+            }],
+            generationConfig: {
+              temperature,
+              maxOutputTokens: maxTokens,
+              topP: 0.95,
+              topK: 40,
+            },
+          }),
+        });
+        usedVertexAI = true;
+      } else {
+        // Fallback to Google AI Studio with API key
+        console.warn('[AI Gateway] Using API key fallback (configure GCP_SERVICE_ACCOUNT_KEY for production)');
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${actualModel}:generateContent?key=${VERTEX_AI_API_KEY}`;
+        
+        response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{ text: prompt }],
+            }],
+            generationConfig: {
+              temperature,
+              maxOutputTokens: maxTokens,
+            },
+          }),
+        });
+      }
+    } catch (authError: any) {
+      console.error('[AI Gateway] Auth error, falling back to API key:', sanitizeError(authError));
+      
+      // Final fallback to API key
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${actualModel}:generateContent?key=${VERTEX_AI_API_KEY}`;
+      
+      response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      }),
-    });
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: prompt }],
+          }],
+          generationConfig: {
+            temperature,
+            maxOutputTokens: maxTokens,
+          },
+        }),
+      });
+    }
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
