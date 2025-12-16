@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
+import DOMPurify from 'dompurify';
 import { Loader2 } from 'lucide-react';
 
+/**
+ * MermaidDiagram
+ * Props:
+ *  - chart: mermaid diagram source (string). IMPORTANT: this component will sanitize the rendered SVG output
+ *    before inserting into the DOM using DOMPurify. However, the `chart` prop should be treated as
+ *    trusted input where possible. If you must accept untrusted user input, validate it before
+ *    passing it into this component. The component will reject input containing obvious HTML/script
+ *    payloads.
+ */
 interface MermaidDiagramProps {
   chart: string;
   className?: string;
@@ -18,6 +28,9 @@ export const MermaidDiagram = ({ chart, className = '' }: MermaidDiagramProps) =
         const mermaid = (await import('mermaid')).default;
         
         if (ref.current) {
+          // Generate unique ID for this render using Web Crypto API
+          const uniqueId = `mermaid-${crypto.randomUUID()}`;
+          
           // Initialize mermaid with dark theme support
           mermaid.initialize({
         startOnLoad: true,
@@ -49,12 +62,36 @@ export const MermaidDiagram = ({ chart, className = '' }: MermaidDiagramProps) =
         },
       });
 
-          // Render the diagram
+          // Basic validation: prevent obvious HTML / script payloads in the mermaid source.
+          // Mermaid expects a domain-specific textual syntax; if the chart string contains
+          // raw HTML like <script>, <svg>, <img>, on* attributes or javascript: URIs, reject it.
+          const isChartSafe = (txt: string) => {
+            if (!txt) return false;
+            const forbidden = /<\/?(script|svg|img|iframe|object|embed)|on[a-zA-Z]+=|javascript:|data:text\//i;
+            return !forbidden.test(txt);
+          };
+
           const renderDiagram = async () => {
             try {
-              const { svg } = await mermaid.render(`mermaid-${Date.now()}`, chart);
+              if (!isChartSafe(chart)) {
+                console.warn('MermaidDiagram: rejected chart prop because it contains disallowed content');
+                setError('Diagram contains disallowed content');
+                setLoading(false);
+                return;
+              }
+
+              const { svg } = await mermaid.render(uniqueId, chart);
+
+              // Sanitize the generated SVG before inserting into the DOM to mitigate XSS risks.
+              // Use the SVG profile so DOMPurify knows to allow valid svg attributes while
+              // stripping scripts and dangerous attributes.
+              const clean = DOMPurify.sanitize(svg, (DOMPurify as any).getDefaultConfig
+                ? { USE_PROFILES: { svg: true } }
+                : { SAFE_FOR_SVG: true } as any
+              ) as string;
+
               if (ref.current) {
-                ref.current.innerHTML = svg;
+                ref.current.innerHTML = clean;
                 setLoading(false);
               }
             } catch (error) {
