@@ -75,6 +75,17 @@ export function Features() {
             Comprehensive monitoring, detection, and debugging tools for your AI applications.
             Built for the modern AI engineer.
           </p>
+          <div className="mt-6">
+            <a 
+              href="/docs" 
+              className="text-primary hover:text-primary/80 font-medium inline-flex items-center gap-2 transition-colors"
+            >
+              Learn more in the documentation
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -1,6 +1,12 @@
 /**
  * ObservAI Edge Function - track-llm
  * Ingestion endpoint for LLM tracking data from SDK
+ * 
+ * NOTE: This uses basic threshold detection for real-time alerts.
+ * For ML-based anomaly detection with learned baselines, see:
+ * /functions/adaptive-anomaly-detection/index.ts
+ * 
+ * The ML detector runs every 5 minutes and learns YOUR normal patterns.
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';

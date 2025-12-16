@@ -23,8 +23,8 @@ export default function Index({ theme, setTheme }: IndexProps) {
           description="End-to-end LLM monitoring with deep telemetry, anomaly detection, and automated incident management. Built for the next generation of AI engineers."
           ctaText="Explore Dashboard"
           ctaHref="/dashboard"
-          secondaryCtaText="Watch Demo"
-          secondaryCtaHref="#features"
+          secondaryCtaText="Read Docs"
+          secondaryCtaHref="/docs"
         />
 
         <Features />

@@ -3,6 +3,7 @@ import App from "./App.tsx";
 import "./index.css";
 import { initializeDatadogMonitoring } from "./lib/datadog-apm.ts";
 import { initObservabilityService } from "./lib/observability-service.ts";
+import "./lib/seed-data.ts"; // Load seed utility for console access
 
 // Initialize Datadog monitoring (RUM, Logs, APM)
 if (import.meta.env.PROD || import.meta.env.VITE_DD_CLIENT_TOKEN) {
@@ -14,5 +15,6 @@ if (import.meta.env.PROD || import.meta.env.VITE_DD_CLIENT_TOKEN) {
 // Initialize ObservAI observability service
 initObservabilityService();
 console.log('🚀 ObservAI Hub initialized with competition-grade instrumentation');
+console.log('💡 Use window.seedData.seedAllData() to populate demo data');
 
 createRoot(document.getElementById("root")!).render(<App />);

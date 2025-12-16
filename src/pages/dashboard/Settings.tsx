@@ -1,5 +1,8 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { seedAllData, clearDemoData } from "@/lib/seed-data";
 import {
   Bell,
   Cloud,
@@ -12,6 +15,9 @@ import {
   Sun,
   User,
   Webhook,
+  Database,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 
 interface SettingsProps {
@@ -47,6 +53,70 @@ const integrations = [
 ];
 
 export default function Settings({ theme, setTheme }: SettingsProps) {
+  const [seeding, setSeeding] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const { toast } = useToast();
+
+  const handleSeedData = async () => {
+    setSeeding(true);
+    try {
+      const results = await seedAllData();
+      const allSuccess = Object.values(results).every((r: any) => r.success);
+      
+      if (allSuccess) {
+        toast({
+          title: "Demo Data Seeded",
+          description: "Successfully populated database with demo data.",
+        });
+      } else {
+        toast({
+          title: "Partial Success",
+          description: "Some data seeding operations failed. Check console for details.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to seed demo data.",
+        variant: "destructive",
+      });
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  const handleClearData = async () => {
+    if (!confirm("Are you sure you want to clear all demo data? This cannot be undone.")) {
+      return;
+    }
+    
+    setClearing(true);
+    try {
+      const result = await clearDemoData();
+      if (result.success) {
+        toast({
+          title: "Data Cleared",
+          description: "All demo data has been removed from the database.",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to clear demo data.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to clear demo data.",
+        variant: "destructive",
+      });
+    } finally {
+      setClearing(false);
+    }
+  };
+
   return (
     <div className="space-y-8 max-w-4xl">
       {/* Header */}
@@ -232,6 +302,71 @@ export default function Settings({ theme, setTheme }: SettingsProps) {
               </button>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Demo Data Management */}
+      <section className="rounded-xl border border-border bg-card p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Database className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Demo Data</h2>
+            <p className="text-sm text-muted-foreground">
+              Populate or clear demo data for testing
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="bg-muted/50 p-4 rounded-lg">
+            <h3 className="font-medium text-foreground mb-2">Seed Demo Data</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Populate the database with 50 LLM requests, 10 alerts, and 100 log entries for testing and demonstration purposes.
+            </p>
+            <Button 
+              onClick={handleSeedData}
+              disabled={seeding}
+              variant="default"
+            >
+              {seeding ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Seeding Data...
+                </>
+              ) : (
+                <>
+                  <Database className="h-4 w-4 mr-2" />
+                  Seed Demo Data
+                </>
+              )}
+            </Button>
+          </div>
+
+          <div className="bg-destructive/10 p-4 rounded-lg">
+            <h3 className="font-medium text-foreground mb-2">Clear Demo Data</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Remove all demo data from the database. This action cannot be undone.
+            </p>
+            <Button 
+              onClick={handleClearData}
+              disabled={clearing}
+              variant="destructive"
+            >
+              {clearing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Clearing Data...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear All Data
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </section>
 

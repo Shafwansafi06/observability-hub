@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
+import Docs from "./pages/Docs";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
 import AuthCallback from "./pages/AuthCallback";
@@ -39,6 +40,7 @@ const App = () => {
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<Index theme={theme} setTheme={setTheme} />} />
+              <Route path="/docs" element={<Docs />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<SignUp />} />
               <Route path="/auth/callback" element={<AuthCallback />} />

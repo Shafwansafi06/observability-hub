@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, AlertCircle, Info, CheckCircle, Clock } from "lucide-react";
+import { AlertTriangle, AlertCircle, Info, CheckCircle, Clock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type AlertSeverity = "critical" | "warning" | "info" | "resolved";
@@ -61,13 +62,35 @@ export function AlertCard({
   onInvestigate,
   className,
 }: AlertCardProps) {
+  const [acknowledging, setAcknowledging] = useState(false);
+  const [investigating, setInvestigating] = useState(false);
   const config = severityConfig[alert.severity];
   const Icon = config.icon;
+
+  const handleAcknowledge = async () => {
+    if (!onAcknowledge || acknowledging) return;
+    setAcknowledging(true);
+    try {
+      await onAcknowledge(alert.id);
+    } finally {
+      setTimeout(() => setAcknowledging(false), 500);
+    }
+  };
+
+  const handleInvestigate = async () => {
+    if (!onInvestigate || investigating) return;
+    setInvestigating(true);
+    try {
+      await onInvestigate(alert.id);
+    } finally {
+      setTimeout(() => setInvestigating(false), 500);
+    }
+  };
 
   return (
     <div
       className={cn(
-        "rounded-xl border p-4 transition-all duration-200 hover:shadow-md",
+        "rounded-xl border p-4 transition-all duration-200 hover:shadow-md hover:scale-[1.01]",
         config.bg,
         config.border,
         className
@@ -109,20 +132,36 @@ export function AlertCard({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => onAcknowledge(alert.id)}
-                  className="text-xs h-8"
+                  onClick={handleAcknowledge}
+                  disabled={acknowledging}
+                  className="text-xs h-8 transition-all"
                 >
-                  Acknowledge
+                  {acknowledging ? (
+                    <>
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      Acknowledging...
+                    </>
+                  ) : (
+                    "Acknowledge"
+                  )}
                 </Button>
               )}
               {onInvestigate && (
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => onInvestigate(alert.id)}
-                  className="text-xs h-8"
+                  onClick={handleInvestigate}
+                  disabled={investigating}
+                  className="text-xs h-8 transition-all"
                 >
-                  Investigate
+                  {investigating ? (
+                    <>
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      Resolving...
+                    </>
+                  ) : (
+                    "Investigate"
+                  )}
                 </Button>
               )}
             </div>

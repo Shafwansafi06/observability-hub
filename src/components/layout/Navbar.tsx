@@ -18,6 +18,7 @@ interface NavbarProps {
 
 const navLinks = [
   { href: "/", label: "Home" },
+  { href: "/docs", label: "Docs" },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/dashboard/llm-metrics", label: "LLM Metrics" },
   { href: "/dashboard/anomalies", label: "Anomalies" },
