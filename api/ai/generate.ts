@@ -236,10 +236,12 @@ export default async function handler(
 
   // Check if API key is configured
   if (!VERTEX_AI_API_KEY) {
-    console.error('VERTEX_AI_API_KEY is not configured on server');
+    console.error('❌ VERTEX_AI_API_KEY is not configured on server');
+    console.error('Environment variables available:', Object.keys(process.env).filter(k => k.includes('VERTEX') || k.includes('GCP')));
     res.status(503).json({ 
-      error: 'AI service temporarily unavailable',
-      code: 'SERVICE_UNAVAILABLE'
+      error: 'VERTEX_AI_API_KEY not configured in Vercel environment variables',
+      code: 'SERVICE_UNAVAILABLE',
+      details: 'Add VERTEX_AI_API_KEY (no VITE_ prefix) in Vercel Dashboard → Settings → Environment Variables'
     } as ErrorResponse);
     return;
   }

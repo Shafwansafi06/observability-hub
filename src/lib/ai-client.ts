@@ -45,7 +45,7 @@ export interface AIMetrics {
 // ===== CONSTANTS =====
 const AI_GATEWAY_URL = '/api/ai/generate';
 const DEFAULT_TIMEOUT_MS = 30000; // 30 seconds
-const DEMO_MODE_ENABLED = true; // Enable mock responses when backend unavailable
+const DEMO_MODE_ENABLED = false; // ❌ Disabled - show real errors instead
 
 // ===== METRICS TRACKING =====
 class MetricsTracker {
@@ -182,17 +182,7 @@ export class SecureAIClient {
         throw new Error('Prompt is too long (max 32,000 characters)');
       }
 
-      // Check backend availability
-      const backendAvailable = await this.checkBackendHealth();
-      
-      if (!backendAvailable && DEMO_MODE_ENABLED) {
-        console.warn('[AI Client] Backend unavailable, using demo mode');
-        const mockResponse = generateMockResponse(request.prompt);
-        this.metricsTracker.recordRequest(true, Date.now() - startTime, mockResponse.tokens);
-        return mockResponse;
-      }
-
-      // Make request to backend gateway
+      // Make request to backend gateway (no health check - let it fail with real errors)
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
@@ -242,16 +232,13 @@ export class SecureAIClient {
       const latency = Date.now() - startTime;
       this.metricsTracker.recordRequest(false, latency);
 
-      // Handle network errors gracefully
+      // Handle network errors - throw real errors, no demo mode
       if (error.name === 'AbortError') {
         throw new Error('Request timeout. Please try again.');
       }
 
-      if (DEMO_MODE_ENABLED && !navigator.onLine) {
-        console.warn('[AI Client] Offline, using demo mode');
-        return generateMockResponse(request.prompt);
-      }
-
+      // Always throw the real error
+      console.error('[AI Client] Request failed:', error);
       throw error;
     }
   }
