@@ -1,11 +1,25 @@
 /**
- * Vertex AI Client for Vite/React
- * Two-Model Support: Gemini 2.5 Flash (Fast) and Gemini 2.5 Pro (Advanced)
- * Uses Vite proxy to avoid CORS issues
+ * Vertex AI Client for Vite/React (DEPRECATED - Use ai-client.ts instead)
+ * 
+ * SECURITY NOTICE:
+ * This client has been migrated to use a secure backend gateway.
+ * All AI requests now go through /api/ai/generate to protect API keys.
+ * 
+ * WHY THE CHANGE:
+ * - API keys should NEVER be in client-side code (VITE_ variables are bundled)
+ * - Backend gateway provides rate limiting, validation, and audit logging
+ * - Prevents API key theft and abuse
+ * 
+ * MIGRATION PATH:
+ * - Old code using vertexAI.predict() continues to work
+ * - Internally routes through secure backend
+ * - No API key needed in frontend
  */
 
-const API_KEY = import.meta.env.VITE_VERTEX_AI_API_KEY;
-const USE_PROXY = import.meta.env.DEV; // Use proxy in development
+import { aiClient, type AIRequest, type AIResponse } from '../ai-client';
+
+// No longer reading VITE_VERTEX_AI_API_KEY - using backend gateway instead
+const USE_BACKEND_GATEWAY = true;
 
 // Supported models with their capabilities and limits
 export enum ModelType {
@@ -88,20 +102,17 @@ class VertexAIClient {
   };
 
   constructor() {
-    if (!API_KEY) {
-      throw new Error('VITE_VERTEX_AI_API_KEY is not configured');
-    }
+    // No longer requires API key in frontend
+    // Backend gateway handles authentication
+    console.log('[VertexAI] Using secure backend gateway at /api/ai/generate');
   }
 
   /**
-   * Get the base URL for API requests (text models)
+   * Get the backend gateway URL (SECURE)
+   * All requests now go through our backend to protect API keys
    */
-  private getTextModelUrl(model: string): string {
-    if (USE_PROXY) {
-      return `/api/gemini/v1beta/models/${model}:generateContent`;
-    } else {
-      return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-    }
+  private getGatewayUrl(): string {
+    return '/api/ai/generate';
   }
 
   /**
@@ -123,7 +134,10 @@ class VertexAIClient {
   }
 
   /**
-   * Make a prediction using Gemini Text API
+   * Make a prediction using secure backend gateway
+   * 
+   * SECURITY: All requests now route through /api/ai/generate
+   * This ensures API keys are never exposed in the frontend bundle
    */
   async predict(request: PredictionRequest): Promise<PredictionResponse> {
     const startTime = Date.now();
@@ -132,122 +146,49 @@ class VertexAIClient {
     try {
       const modelName = (request.model as ModelType) || ModelType.TEXT_FAST;
 
-      // Text generation
-      const url = this.getTextModelUrl(modelName as string);
+      // Use secure backend gateway instead of direct API call
+      const aiRequest: AIRequest = {
+        prompt: request.prompt,
+        model: modelName as any,
+        temperature: request.temperature || 0.7,
+        maxTokens: request.maxTokens || 1024,
+      };
 
-      const response = await fetch(`${url}?key=${API_KEY}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [{ text: request.prompt }],
-            },
-          ],
-          generationConfig: {
-            maxOutputTokens: request.maxTokens || 1024,
-            temperature: request.temperature || 0.7,
-          },
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || `API request failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const latency = Date.now() - startTime;
-      
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      const tokens = data.usageMetadata?.totalTokenCount || 0;
+      const aiResponse: AIResponse = await aiClient.generate(aiRequest);
 
       // Update metrics
       this.metrics.successfulRequests++;
-      this.metrics.tokensUsed += tokens;
-      this.updateAverageLatency(latency);
-      this.trackModelUsage(modelName as string, tokens, latency);
+      this.metrics.tokensUsed += aiResponse.tokens;
+      this.updateAverageLatency(aiResponse.latency);
+      this.trackModelUsage(modelName as string, aiResponse.tokens, aiResponse.latency);
 
       return {
-        text,
-        tokens,
-        latency,
-        model: modelName as string,
+        text: aiResponse.text,
+        tokens: aiResponse.tokens,
+        latency: aiResponse.latency,
+        model: aiResponse.model,
         modelType: 'text',
       };
     } catch (error) {
       this.metrics.failedRequests++;
+      const latency = Date.now() - startTime;
+      this.updateAverageLatency(latency);
       throw error;
     }
   }
 
   /**
    * Stream a prediction response (text models only)
+   * 
+   * NOTE: Streaming is not yet supported through the secure backend gateway.
+   * This will be added in a future update. For now, use the standard predict() method.
    */
   async *predictStream(request: PredictionRequest): AsyncGenerator<string> {
-    const modelName = (request.model as ModelType) || ModelType.TEXT_FAST;
-    const config = MODEL_CONFIGS[modelName as ModelType];
-
-    if (config?.type !== 'text') {
-      throw new Error('Streaming is only supported for text models');
-    }
-
-    const baseUrl = USE_PROXY 
-      ? `/api/gemini/v1beta/models/${modelName}:streamGenerateContent`
-      : `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent`;
-
-    const response = await fetch(`${baseUrl}?key=${API_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [{ text: request.prompt }],
-          },
-        ],
-        generationConfig: {
-          maxOutputTokens: request.maxTokens || 1024,
-          temperature: request.temperature || 0.7,
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error?.message || 'Stream prediction failed');
-    }
-
-    const reader = response.body?.getReader();
-    if (!reader) throw new Error('No response body');
-
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      
-      // Parse chunks from the buffer
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (text) yield text;
-          } catch {
-            // Skip invalid JSON
-          }
-        }
-      }
+    // TODO: Implement streaming through backend gateway
+    // For now, fall back to non-streaming prediction
+    const response = await this.predict(request);
+    if (response.text) {
+      yield response.text;
     }
   }
 
