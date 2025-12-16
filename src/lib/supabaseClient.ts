@@ -10,19 +10,30 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database';
 
-// Environment variables
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+// Environment variables with fallbacks
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error('Missing Supabase environment variables');
+// Check if we're in a development environment without proper setup
+const isDevelopmentWithoutConfig = !SUPABASE_URL || !SUPABASE_ANON_KEY;
+
+if (isDevelopmentWithoutConfig) {
+  console.warn('⚠️ Supabase environment variables are not configured.');
+  console.warn('The app will work in demo mode with mock data.');
+  console.warn('To enable full functionality, add these to your Vercel environment variables:');
+  console.warn('- VITE_SUPABASE_URL');
+  console.warn('- VITE_SUPABASE_ANON_KEY');
 }
+
+// Use dummy values if not configured (app will use mock data)
+const SAFE_SUPABASE_URL = SUPABASE_URL || 'https://placeholder.supabase.co';
+const SAFE_SUPABASE_ANON_KEY = SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDUxOTI4MDAsImV4cCI6MTk2MDc2ODgwMH0.placeholder';
 
 /**
  * Browser Supabase Client
  * Use this client for client-side operations in React components
  */
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+export const supabase = createClient<Database>(SAFE_SUPABASE_URL, SAFE_SUPABASE_ANON_KEY, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
@@ -44,9 +55,17 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, 
 });
 
 /**
+ * Check if Supabase is properly configured
+ */
+export const isSupabaseConfigured = !isDevelopmentWithoutConfig;
+
+/**
  * Get the current user's session
  */
 export async function getSession() {
+  if (!isSupabaseConfigured) {
+    return null;
+  }
   const { data: { session }, error } = await supabase.auth.getSession();
   if (error) throw error;
   return session;
@@ -56,6 +75,9 @@ export async function getSession() {
  * Get the current user
  */
 export async function getUser() {
+  if (!isSupabaseConfigured) {
+    return null;
+  }
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error) throw error;
   return user;

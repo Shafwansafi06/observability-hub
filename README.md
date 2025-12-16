@@ -1,661 +1,332 @@
-# ObservAI Hub 🚀<p align="center">
-
-  <img src="https://img.shields.io/badge/ObservAI-Hub-6366f1?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEyIDJ2NCIvPjxwYXRoIGQ9Im02LjggMTQuNiA0LjItOS4yIDQuMiA5LjIiLz48cGF0aCBkPSJNMTUuNiAxNC42IDEyIDIyIDguNCAxNC42Ii8+PC9zdmc+" alt="ObservAI Hub"/>
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)</p>
-
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
-
-[![React](https://img.shields.io/badge/React-18.3+-61DAFB.svg)](https://reactjs.org/)<h1 align="center">🔮 ObservAI Hub</h1>
-
-[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green.svg)](https://supabase.com/)
-
 <p align="center">
-
-**Production-ready LLM observability platform with ML-powered anomaly detection.**  <strong>Enterprise-Grade LLM Observability Platform</strong>
-
+  <img src="https://img.shields.io/badge/ObservAI-Hub-6366f1?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEyIDJ2NCIvPjxwYXRoIGQ9Im02LjggMTQuNiA0LjItOS4yIDQuMiA5LjIiLz48cGF0aCBkPSJNMTUuNiAxNC42IDEyIDIyIDguNCAxNC42Ii8+PC9zdmc+" alt="ObservAI Hub"/>
 </p>
 
-Track, analyze, and optimize your AI applications with automatic monitoring, quality analysis, and cost tracking across any codebase.
+<h1 align="center">🔮 ObservAI Hub</h1>
 
 <p align="center">
+  <strong>Enterprise-Grade LLM Observability Platform</strong>
+</p>
 
----  <a href="#-features">Features</a> •
-
+<p align="center">
+  <a href="#-features">Features</a> •
   <a href="#-lyra-ai-prompt-optimizer">Lyra AI</a> •
-
-## ⚡ Quick Start  <a href="#-40-aiml-detection-rules">Detection Rules</a> •
-
+  <a href="#-40-aiml-detection-rules">Detection Rules</a> •
   <a href="#-architecture">Architecture</a> •
+  <a href="#-datadog-integration">Datadog</a> •
+  <a href="#-algorithms">Algorithms</a>
+</p>
 
-```bash  <a href="#-datadog-integration">Datadog</a> •
-
-# Install SDK in your project  <a href="#-algorithms">Algorithms</a>
-
-npm install @observai/sdk @google/generative-ai</p>
-
-
-
-# Initialize (2 lines of code)<p align="center">
-
-import { ObservAIClient } from '@observai/sdk';  <img src="https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=white" alt="React"/>
-
+<p align="center">
+  <img src="https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=white" alt="React"/>
   <img src="https://img.shields.io/badge/TypeScript-5.6-3178C6?logo=typescript&logoColor=white" alt="TypeScript"/>
-
-const client = new ObservAIClient({  <img src="https://img.shields.io/badge/Vite-5.4-646CFF?logo=vite&logoColor=white" alt="Vite"/>
-
-  apiKey: process.env.VERTEX_AI_API_KEY!,  <img src="https://img.shields.io/badge/Tailwind-3.4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind"/>
-
-  projectId: 'my-app',  <img src="https://img.shields.io/badge/Datadog-RUM-632CA6?logo=datadog&logoColor=white" alt="Datadog"/>
-
-  userId: 'user-123',  <img src="https://img.shields.io/badge/Vertex_AI-Gemini-4285F4?logo=google-cloud&logoColor=white" alt="Vertex AI"/>
-
-  trackingEndpoint: 'https://your-project.supabase.co/functions/v1/track-llm',</p>
-
-});
+  <img src="https://img.shields.io/badge/Vite-5.4-646CFF?logo=vite&logoColor=white" alt="Vite"/>
+  <img src="https://img.shields.io/badge/Tailwind-3.4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind"/>
+  <img src="https://img.shields.io/badge/Datadog-RUM-632CA6?logo=datadog&logoColor=white" alt="Datadog"/>
+  <img src="https://img.shields.io/badge/Vertex_AI-Gemini-4285F4?logo=google-cloud&logoColor=white" alt="Vertex AI"/>
+</p>
 
 ---
 
-# Start tracking
+## 📖 Overview
 
-const result = await client.generateContent(## 📖 Overview
-
-  'gemini-2.5-flash',
-
-  'Your prompt here'**ObservAI Hub** is a production-ready, enterprise-grade LLM observability platform that revolutionizes AI monitoring with **Lyra AI Prompt Optimizer** and **40 specialized AI/ML detection rules**. Built for AI engineers who need comprehensive visibility into their GenAI systems.
-
-);
+**ObservAI Hub** is a production-ready, enterprise-grade LLM observability platform that revolutionizes AI monitoring with **Lyra AI Prompt Optimizer** and **40 specialized AI/ML detection rules**. Built for AI engineers who need comprehensive visibility into their GenAI systems.
 
 ```
-
-console.log('Cost:', result.tracking.cost_usd);┌─────────────────────────────────────────────────────────────────┐
-
-console.log('Quality:', result.tracking.coherence_score);│                      🎯 ObservAI Hub                             │
-
-```│  🤖 Lyra AI Optimizer • 📊 40 Detection Rules • 🔍 Real-time   │
-
+┌─────────────────────────────────────────────────────────────────┐
+│                      🎯 ObservAI Hub                             │
+│  🤖 Lyra AI Optimizer • 📊 40 Detection Rules • 🔍 Real-time   │
 │  Datadog RUM + APM + Logs • Gemini 2.5 • Security Monitoring   │
-
-**That's it!** Every LLM request is now automatically tracked.└─────────────────────────────────────────────────────────────────┘
-
+└─────────────────────────────────────────────────────────────────┘
 ```
-
----
 
 ### 🏆 What Makes ObservAI Hub Unique
 
-## 📚 Documentation
-
 | Feature | Traditional Monitoring | ObservAI Hub |
-
-**Complete documentation is available on our deployed site:**|---------|----------------------|--------------|
-
+|---------|----------------------|--------------|
 | **AI-Specific Detection** | ❌ Generic alerts | ✅ 40 specialized AI/ML rules |
-
-### **👉 [View Full Documentation](https://your-deployed-site.vercel.app/docs)**| **Prompt Optimization** | ❌ No guidance | ✅ Lyra AI with 4-D methodology |
-
+| **Prompt Optimization** | ❌ No guidance | ✅ Lyra AI with 4-D methodology |
 | **Quality Monitoring** | ❌ Basic metrics | ✅ Toxicity, coherence, hallucination detection |
-
-The documentation includes:| **Cost Intelligence** | ❌ Manual tracking | ✅ Real-time per-model cost attribution |
-
+| **Cost Intelligence** | ❌ Manual tracking | ✅ Real-time per-model cost attribution |
 | **Security** | ❌ Standard checks | ✅ Prompt injection & data exfiltration detection |
+| **Integration** | ⚠️ Partial | ✅ Full Datadog ecosystem (RUM, APM, Logs, Synthetics) |
 
-- 🚀 **Quick Start Guide** - Get running in 5 minutes| **Integration** | ⚠️ Partial | ✅ Full Datadog ecosystem (RUM, APM, Logs, Synthetics) |
+---
 
-- 📦 **SDK Integration** - Examples for Node.js, Next.js, Lambda, React
-
-- 🧠 **ML Anomaly Detection** - How the adaptive learning system works---
-
-- 🚢 **Deployment Guide** - Deploy to Supabase + Vercel
-
-- 🏗️ **Architecture** - System design and data flow## 🚀 ObservAI SDK - Track Any Project
-
-- 🔒 **Security & Compliance** - Data protection and RLS
+## 🚀 ObservAI SDK - Track Any Project
 
 **NEW!** Track LLM usage from ANY project with our TypeScript/JavaScript SDK:
 
----
-
 ```bash
-
-## ✨ Key Featuresnpm install @observai/sdk
-
+npm install @observai/sdk
 ```
 
-### 🎯 Zero-Configuration Tracking
-
-- Drop-in replacement for Vertex AI client```typescript
-
-- Automatic request tracking with 2 lines of codeimport { ObservAIClient } from '@observai/sdk';
-
-- Works in Node.js, Browser, Serverless (Lambda, Vercel, Netlify)
+```typescript
+import { ObservAIClient } from '@observai/sdk';
 
 const client = new ObservAIClient({
-
-### 🧠 ML-Powered Anomaly Detection  apiKey: process.env.VERTEX_AI_API_KEY,
-
-- **Learns YOUR normal** - Per-user statistical baselines  userId: 'user-123',
-
-- **Auto-tunes** every 5 minutes based on last 24 hours  projectName: 'my-app'
-
-- **99.7% confidence** detection using Z-score analysis});
-
-- No false positives from generic thresholds
+  apiKey: process.env.VERTEX_AI_API_KEY,
+  userId: 'user-123',
+  projectName: 'my-app'
+});
 
 // Automatically tracked!
-
-### 📊 Real-Time Quality Analysisconst result = await client.generateContent(
-
-- **Coherence Score** - Response quality (0.0-1.0)  'gemini-2.5-flash',
-
-- **Toxicity Detection** - Safety measure (0.0-1.0)  'Hello, world!'
-
-- **Hallucination Risk** - Factuality estimate (0.0-1.0));
-
-- **Sentiment Analysis** - Emotional tone (-1.0 to 1.0)
+const result = await client.generateContent(
+  'gemini-2.5-flash',
+  'Hello, world!'
+);
 
 console.log(result.tracking);
-
-### 💰 Automatic Cost Tracking// {
-
-- Real-time per-request cost calculation//   request_id: 'req_...',
-
-- Model-specific pricing (Gemini Flash/Pro)//   latency_ms: 1234,
-
-- Daily/monthly spend tracking//   tokens_used: 567,
-
-- Cost attribution per user/tenant//   cost_estimate_usd: 0.000043,
-
+// {
+//   request_id: 'req_...',
+//   latency_ms: 1234,
+//   tokens_used: 567,
+//   cost_estimate_usd: 0.000043,
 //   tracked: true
+// }
+```
 
-### 🚀 Production-Ready// }
-
-- **Batch Mode** - 95%+ reduction in network calls```
-
-- **Auto-Retry** - Exponential backoff for reliability
-
-- **Type-Safe** - Full TypeScript support### SDK Features
-
-- **Scales** - From prototype to millions of users
+### SDK Features
 
 - ✨ **Drop-in Replacement** - Works with @google/generative-ai
-
----- 📊 **Auto-Tracking** - Every request sent to your dashboard
-
+- 📊 **Auto-Tracking** - Every request sent to your dashboard
 - 💰 **Cost Calculation** - Real-time per-model pricing
-
-## 🏗️ Architecture- 🎯 **Quality Analysis** - Coherence, toxicity, hallucination detection
-
+- 🎯 **Quality Analysis** - Coherence, toxicity, hallucination detection
 - ⚡ **Batch Mode** - Efficient data transmission
+- 🛡️ **Error Resilience** - Auto-retry with exponential backoff
+- 🔒 **Privacy** - Sanitizes sensitive data before transmission
 
-```- 🛡️ **Error Resilience** - Auto-retry with exponential backoff
+**[📖 Full SDK Documentation](./sdk/README.md)** • **[⚙️ Setup Guide](./sdk/SETUP.md)** • **[💻 Examples](./sdk/examples/)**
 
-Your App → ObservAI SDK → Vertex AI- 🔒 **Privacy** - Sanitizes sensitive data before transmission
-
-              ↓
-
-         Edge Function → PostgreSQL → ML Detector**[📖 Full SDK Documentation](./sdk/README.md)** • **[⚙️ Setup Guide](./sdk/SETUP.md)** • **[💻 Examples](./sdk/examples/)**
-
-              ↓
-
-         Real-Time Dashboard---
-
-```
+---
 
 ## 🔐 Authentication & Security
 
-**Stack:**
+ObservAI Hub uses **Supabase Authentication** with multi-provider support:
 
-- **Frontend**: React 18 + Vite + TypeScript + shadcn/uiObservAI Hub uses **Supabase Authentication** with multi-provider support:
+### Supported Authentication Methods
 
-- **Backend**: Supabase (PostgreSQL + Edge Functions)
-
-- **AI**: Google Vertex AI (Gemini 2.5 Flash/Pro)### Supported Authentication Methods
-
-- **Monitoring**: Datadog RUM + APM + Logs
-
-- **ML**: Adaptive anomaly detection with statistical baselines| Method | Status | Description |
-
+| Method | Status | Description |
 |--------|--------|-------------|
-
----| 📧 **Email/Password** | ✅ Enabled | Traditional signup/login |
-
+| 📧 **Email/Password** | ✅ Enabled | Traditional signup/login |
 | 🔑 **Google OAuth** | ✅ Enabled | One-click Google sign-in |
-
-## 🚀 Deployment
 
 ### Security Features
 
-### Prerequisites
-
-- Node.js 18+```mermaid
-
-- Supabase account (free tier)graph LR
-
-- Vercel account (free tier)    A[User Login] --> B{Auth Provider}
-
-- Google Cloud with Vertex AI enabled    B -->|Email/Password| C[Supabase Auth]
-
+```mermaid
+graph LR
+    A[User Login] --> B{Auth Provider}
+    B -->|Email/Password| C[Supabase Auth]
     B -->|Google OAuth| C
-
-### Deploy Backend (Supabase)    C --> D[Generate JWT Token]
-
-```bash    D --> E[Store in Context]
-
-# Install CLI    E --> F[Protected Routes]
-
-npm install -g supabase    F --> G[RLS Policies]
-
+    C --> D[Generate JWT Token]
+    D --> E[Store in Context]
+    E --> F[Protected Routes]
+    F --> G[RLS Policies]
     G --> H[User-Specific Data]
-
-# Link project    
-
-supabase link --project-ref YOUR_REF    style C fill:#22c55e
-
-supabase db push    style D fill:#3b82f6
-
+    
+    style C fill:#22c55e
+    style D fill:#3b82f6
     style G fill:#ef4444
-
-# Deploy edge functions```
-
-supabase functions deploy track-llm
-
-supabase functions deploy adaptive-anomaly-detection#### Row Level Security (RLS)
-
-```- **Per-User Data Isolation**: Each user can only access their own data
-
-- **Automatic Filtering**: `auth.uid() = user_id` enforced on all tables
-
-### Deploy Frontend (Vercel)- **11 Secured Tables**: llm_requests, alerts, logs, cost_tracking, etc.
-
-```bash- **Protected Routes**: Dashboard requires authentication
-
-# Install CLI
-
-npm i -g vercel#### Data Protection
-
-- ✅ HTTPS-only communication
-
-# Deploy- ✅ JWT tokens with auto-refresh
-
-vercel --prod- ✅ API keys stored in environment variables
-
-- ✅ Sensitive data sanitization before storage
-
-# Add environment variables in Vercel dashboard- ✅ No hardcoded credentials
-
 ```
+
+#### Row Level Security (RLS)
+- **Per-User Data Isolation**: Each user can only access their own data
+- **Automatic Filtering**: `auth.uid() = user_id` enforced on all tables
+- **11 Secured Tables**: llm_requests, alerts, logs, cost_tracking, etc.
+- **Protected Routes**: Dashboard requires authentication
+
+#### Data Protection
+- ✅ HTTPS-only communication
+- ✅ JWT tokens with auto-refresh
+- ✅ API keys stored in environment variables
+- ✅ Sensitive data sanitization before storage
+- ✅ No hardcoded credentials
 
 ### Getting Started with Authentication
 
-### Publish SDK (NPM)
+```typescript
+// 1. Sign Up
+await signUp(email, password, fullName);
 
-```bash```typescript
-
-cd sdk// 1. Sign Up
-
-npm run buildawait signUp(email, password, fullName);
-
-npm publish --access public
-
-```// 2. Sign In
-
+// 2. Sign In
 await signIn(email, password);
 
-**Total cost to start: $0/month** (free tiers)
-
 // 3. Google OAuth
+await signInWithGoogle(); // Redirects to Google
 
----await signInWithGoogle(); // Redirects to Google
-
-
-
-## 🧠 ML Anomaly Detection// 4. Auto-Session Management
-
+// 4. Auto-Session Management
 // Sessions persist automatically
-
-### How It Works// JWT tokens refresh automatically
-
-
-
-1. **Collect** - 24 hours of your LLM requests// 5. Protected Access
-
-2. **Compute** - Statistical baselines (mean, stddev, percentiles)// Dashboard routes require authentication
-
-3. **Detect** - Z-score analysis (>3.0 = anomaly with 99.7% confidence)// Unauthorized users redirected to /login
-
-4. **Adapt** - Recompute every 5 minutes, adapts to changes```
-
-
-
-### Example---
-
-
-
-```typescript## 🏗️ Complete System Architecture
-
-// Your normal behavior (learned)
-
-Baseline: latency mean=850ms, stddev=120ms```mermaid
-
-graph TB
-
-// New request: 3200ms    subgraph "External Projects"
-
-Z-score: (3200 - 850) / 120 = 19.6        A1[React App]
-
-        A2[Next.js API]
-
-// Result: 🚨 CRITICAL ANOMALY        A3[Express Server]
-
-// Confidence: 99.99%+        A4[AWS Lambda]
-
-// Deviation: +276%    end
-
-```    
-
-    subgraph "ObservAI SDK"
-
-No more false positives from static thresholds!        B1[Client Initialization]
-
-        B2[Intercept LLM Calls]
-
----        B3[Calculate Metrics]
-
-        B4[Quality Analysis]
-
-## 📦 SDK Usage Examples        B5[Batch Manager]
-
-    end
-
-### Express.js    
-
-```typescript    subgraph "Google Cloud"
-
-import { ObservAIClient } from '@observai/sdk';        C1[Vertex AI API]
-
-        C2[Gemini 2.5 Flash]
-
-const client = new ObservAIClient({...});        C3[Gemini 2.5 Pro]
-
-    end
-
-app.post('/api/chat', async (req, res) => {    
-
-  const result = await client.generateContent(    subgraph "Supabase Backend"
-
-    'gemini-2.5-flash',        D1[Edge Function<br/>track-llm]
-
-    req.body.message        D2[PostgreSQL Database]
-
-  );        D3[Authentication]
-
-  res.json({ response: result.response.text() });        D4[Row Level Security]
-
-});    end
-
-```    
-
-    subgraph "ObservAI Dashboard"
-
-### Next.js App Router        E1[Login/Signup]
-
-```typescript        E2[Overview Dashboard]
-
-// app/api/generate/route.ts        E3[LLM Metrics]
-
-const result = await client.generateContent(        E4[Anomalies & Alerts]
-
-  'gemini-2.5-flash',        E5[Lyra AI Optimizer]
-
-  prompt        E6[Log Stream]
-
-);    end
-
-    
-
-return NextResponse.json({ text: result.response.text() });    subgraph "Monitoring & Analytics"
-
-```        F1[Datadog RUM]
-
-        F2[Datadog APM]
-
-### AWS Lambda        F3[Datadog Logs]
-
-```typescript        F4[Custom Dashboards]
-
-export const handler = async (event) => {    end
-
-  const result = await client.generateContent(    
-
-    'gemini-2.5-flash',    A1 --> B1
-
-    event.prompt    A2 --> B1
-
-  );    A3 --> B1
-
-  await client.dispose(); // Cleanup    A4 --> B1
-
-  return { statusCode: 200, body: JSON.stringify(result) };    
-
-};    B1 --> B2
-
-```    B2 --> C1
-
-    C1 --> C2
-
----    C1 --> C3
-
-    C2 --> B3
-
-## 🛠️ Tech Stack    C3 --> B3
-
-    
-
-| Component | Technology | Purpose |    B3 --> B4
-
-|-----------|------------|---------|    B4 --> B5
-
-| **Frontend** | React 18 + Vite + TypeScript | Dashboard UI |    B5 -->|HTTPS POST| D1
-
-| **UI Library** | shadcn/ui + Tailwind CSS | Component library |    
-
-| **Backend** | Supabase | PostgreSQL + Edge Functions |    D1 --> D2
-
-| **Authentication** | Supabase Auth | Email/Password + Google OAuth |    D1 --> D4
-
-| **AI Models** | Google Vertex AI | Gemini 2.5 Flash/Pro |    D3 --> D4
-
-| **ML Detection** | Custom (Z-score + IQR) | Anomaly detection |    D2 --> D4
-
-| **Monitoring** | Datadog | RUM + APM + Logs |    
-
-| **Deployment** | Vercel + Supabase | Serverless hosting |    D2 -->|Real-time Updates| E2
-
-    D2 --> E3
-
----    D2 --> E4
-
-    D2 --> E6
-
-## 🔒 Security    
-
-    E1 --> D3
-
-- ✅ **Row Level Security (RLS)** - Per-user data isolation    E2 --> F1
-
-- ✅ **Encrypted at Rest** - PostgreSQL encryption    E3 --> F2
-
-- ✅ **HTTPS Only** - TLS 1.3 for all traffic    E4 --> F3
-
-- ✅ **Auto Sanitization** - Removes API keys, emails, etc.    
-
-- ✅ **JWT Tokens** - Secure session management    F1 --> F4
-
-- ✅ **GDPR Ready** - Data export/deletion APIs    F2 --> F4
-
-    F3 --> F4
-
----    
-
-    style B1 fill:#6366f1
-
-## 🎯 Use Cases    style D1 fill:#22c55e
-
-    style D2 fill:#3b82f6
-
-### SaaS Applications    style D3 fill:#ef4444
-
-Track LLM usage per tenant for accurate billing and monitoring    style E5 fill:#ec4899
-
-    style F4 fill:#f59e0b
-
-### E-commerce Platforms```
-
-Monitor chatbot quality and optimize costs at scale
-
-### Data Flow Sequence
-
-### Content Generation
-
-High-volume generation with batch mode and cost optimization```mermaid
-
-sequenceDiagram
-
-### Enterprise Software    participant User as User Code
-
-Multi-project tracking with team dashboards and compliance    participant SDK as ObservAI SDK
-
-    participant AI as Vertex AI
-
----    participant Edge as Edge Function
-
-    participant DB as PostgreSQL
-
-## 📊 Dashboard Features    participant Dash as Dashboard
-
-    
-
-- **Overview** - Key metrics at a glance    User->>SDK: generateContent(model, prompt)
-
-- **LLM Metrics** - Deep dive into model performance    activate SDK
-
-- **Log Stream** - Real-time request monitoring    
-
-- **Anomalies** - ML-powered alerts and detection    SDK->>SDK: Start Timer
-
-- **Cost Tracking** - Budget management and forecasting    SDK->>AI: Forward Request
-
-- **Lyra AI** - AI-powered prompt optimization    activate AI
-
-- **Settings** - User preferences and configuration    AI->>AI: Generate Response
-
-    AI-->>SDK: Return Response + Metadata
-
----    deactivate AI
-
-    
-
-## 🤝 Contributing    SDK->>SDK: Stop Timer (latency_ms)
-
-    SDK->>SDK: Calculate Tokens
-
-ObservAI is open source! We welcome contributions.    SDK->>SDK: Calculate Cost
-
-    SDK->>SDK: Analyze Quality<br/>(coherence, toxicity, hallucination)
-
-```bash    
-
-# Clone the repo    alt Batch Mode Enabled
-
-git clone https://github.com/Shafwansafi06/observability-hub.git        SDK->>SDK: Add to Batch Buffer
-
-cd observability-hub        SDK->>SDK: Check Conditions
-
-        alt Batch Full or Timeout
-
-# Install dependencies            SDK->>Edge: POST /track-llm (batch)
-
-bun install  # or npm install        end
-
-    else Immediate Mode
-
-# Set up environment variables        SDK->>Edge: POST /track-llm (single)
-
-cp .env.example .env.local    end
-
-    
-
-# Run development server    activate Edge
-
-bun run dev  # or npm run dev    Edge->>Edge: Validate Request
-
-```    Edge->>Edge: Check Anomalies<br/>(latency, cost, toxicity)
-
-    
-
----    alt Anomaly Detected
-
-        Edge->>DB: INSERT INTO alerts
-
-## 📄 License    end
-
-    
-
-MIT © 2025 ObservAI    Edge->>DB: INSERT INTO llm_requests
-
-    activate DB
-
----    DB->>DB: Apply RLS Policies
-
-    DB->>DB: Update Indexes
-
-## 🙋 Support    DB-->>Edge: Confirmation
-
-    deactivate DB
-
-- **Documentation**: [View Docs](https://your-deployed-site.vercel.app/docs)    
-
-- **GitHub Issues**: [Report Bug](https://github.com/Shafwansafi06/observability-hub/issues)    Edge-->>SDK: Success Response
-
-- **Email**: support@observai.app    deactivate Edge
-
-    
-
----    SDK-->>User: Return Result + Tracking
-
-    deactivate SDK
-
-## ⭐ Show Your Support    
-
-    DB->>Dash: Real-time Update<br/>(Supabase Realtime)
-
-If you find ObservAI useful, please consider giving it a star on GitHub! ⭐    Dash->>Dash: Refresh Charts & Metrics
-
+// JWT tokens refresh automatically
+
+// 5. Protected Access
+// Dashboard routes require authentication
+// Unauthorized users redirected to /login
 ```
 
 ---
 
+## 🏗️ Complete System Architecture
+
+```mermaid
+graph TB
+    subgraph "External Projects"
+        A1[React App]
+        A2[Next.js API]
+        A3[Express Server]
+        A4[AWS Lambda]
+    end
+    
+    subgraph "ObservAI SDK"
+        B1[Client Initialization]
+        B2[Intercept LLM Calls]
+        B3[Calculate Metrics]
+        B4[Quality Analysis]
+        B5[Batch Manager]
+    end
+    
+    subgraph "Google Cloud"
+        C1[Vertex AI API]
+        C2[Gemini 2.5 Flash]
+        C3[Gemini 2.5 Pro]
+    end
+    
+    subgraph "Supabase Backend"
+        D1[Edge Function<br/>track-llm]
+        D2[PostgreSQL Database]
+        D3[Authentication]
+        D4[Row Level Security]
+    end
+    
+    subgraph "ObservAI Dashboard"
+        E1[Login/Signup]
+        E2[Overview Dashboard]
+        E3[LLM Metrics]
+        E4[Anomalies & Alerts]
+        E5[Lyra AI Optimizer]
+        E6[Log Stream]
+    end
+    
+    subgraph "Monitoring & Analytics"
+        F1[Datadog RUM]
+        F2[Datadog APM]
+        F3[Datadog Logs]
+        F4[Custom Dashboards]
+    end
+    
+    A1 --> B1
+    A2 --> B1
+    A3 --> B1
+    A4 --> B1
+    
+    B1 --> B2
+    B2 --> C1
+    C1 --> C2
+    C1 --> C3
+    C2 --> B3
+    C3 --> B3
+    
+    B3 --> B4
+    B4 --> B5
+    B5 -->|HTTPS POST| D1
+    
+    D1 --> D2
+    D1 --> D4
+    D3 --> D4
+    D2 --> D4
+    
+    D2 -->|Real-time Updates| E2
+    D2 --> E3
+    D2 --> E4
+    D2 --> E6
+    
+    E1 --> D3
+    E2 --> F1
+    E3 --> F2
+    E4 --> F3
+    
+    F1 --> F4
+    F2 --> F4
+    F3 --> F4
+    
+    style B1 fill:#6366f1
+    style D1 fill:#22c55e
+    style D2 fill:#3b82f6
+    style D3 fill:#ef4444
+    style E5 fill:#ec4899
+    style F4 fill:#f59e0b
+```
+
+### Data Flow Sequence
+
+```mermaid
+sequenceDiagram
+    participant User as User Code
+    participant SDK as ObservAI SDK
+    participant AI as Vertex AI
+    participant Edge as Edge Function
+    participant DB as PostgreSQL
+    participant Dash as Dashboard
+    
+    User->>SDK: generateContent(model, prompt)
+    activate SDK
+    
+    SDK->>SDK: Start Timer
+    SDK->>AI: Forward Request
+    activate AI
+    AI->>AI: Generate Response
+    AI-->>SDK: Return Response + Metadata
+    deactivate AI
+    
+    SDK->>SDK: Stop Timer (latency_ms)
+    SDK->>SDK: Calculate Tokens
+    SDK->>SDK: Calculate Cost
+    SDK->>SDK: Analyze Quality<br/>(coherence, toxicity, hallucination)
+    
+    alt Batch Mode Enabled
+        SDK->>SDK: Add to Batch Buffer
+        SDK->>SDK: Check Conditions
+        alt Batch Full or Timeout
+            SDK->>Edge: POST /track-llm (batch)
+        end
+    else Immediate Mode
+        SDK->>Edge: POST /track-llm (single)
+    end
+    
+    activate Edge
+    Edge->>Edge: Validate Request
+    Edge->>Edge: Check Anomalies<br/>(latency, cost, toxicity)
+    
+    alt Anomaly Detected
+        Edge->>DB: INSERT INTO alerts
+    end
+    
+    Edge->>DB: INSERT INTO llm_requests
+    activate DB
+    DB->>DB: Apply RLS Policies
+    DB->>DB: Update Indexes
+    DB-->>Edge: Confirmation
+    deactivate DB
+    
+    Edge-->>SDK: Success Response
+    deactivate Edge
+    
+    SDK-->>User: Return Result + Tracking
+    deactivate SDK
+    
+    DB->>Dash: Real-time Update<br/>(Supabase Realtime)
+    Dash->>Dash: Refresh Charts & Metrics
+```
+
 ---
 
-<p align="center">
-
-  <strong>Built with ❤️ using React, Vite, Supabase, and Vertex AI</strong>## ✨ Features
-
-</p>
+## ✨ Features
 
 | Feature | Description | Impact |
-
-<p align="center">|---------|-------------|---------|
-
-  <a href="https://your-deployed-site.vercel.app">Live Demo</a> •| 🤖 **Lyra AI Optimizer** | Data-driven prompt optimization using live metrics | -30% tokens, -67% cost, +35% quality |
-
-  <a href="https://your-deployed-site.vercel.app/docs">Documentation</a> •| 🎯 **40 AI/ML Detection Rules** | Specialized monitoring for data quality, model drift, LLM issues | Catch problems before they impact users |
-
-  <a href="https://github.com/Shafwansafi06/observability-hub">GitHub</a>| 📊 **Real-time Dashboard** | Live metrics with request volume, latency, tokens, cost | Sub-second updates, 20+ custom attributes |
-
-</p>| 🔍 **Datadog RUM Integration** | Track user sessions, interactions, performance | Complete user journey visibility |
-
+|---------|-------------|---------|
+| 🤖 **Lyra AI Optimizer** | Data-driven prompt optimization using live metrics | -30% tokens, -67% cost, +35% quality |
+| 🎯 **40 AI/ML Detection Rules** | Specialized monitoring for data quality, model drift, LLM issues | Catch problems before they impact users |
+| 📊 **Real-time Dashboard** | Live metrics with request volume, latency, tokens, cost | Sub-second updates, 20+ custom attributes |
+| 🔍 **Datadog RUM Integration** | Track user sessions, interactions, performance | Complete user journey visibility |
 | 📝 **APM & Distributed Tracing** | End-to-end request flow from UI to AI response | Identify bottlenecks instantly |
 | 🚨 **Intelligent Alerting** | Hallucination, toxicity, prompt injection detection | Proactive incident management |
 | 💰 **Cost Intelligence** | Per-model cost tracking with budget alerts | Real-time $ optimization |
@@ -1716,662 +1387,6 @@ flowchart TB
     style L fill:#ec4899,color:#fff
     style R fill:#22c55e,color:#fff
 ```
-
----
-
-## 🤖 Machine Learning Anomaly Detection
-
-ObservAI uses **adaptive ML-based anomaly detection** that **learns what's normal** for YOUR application, not static thresholds.
-
-### How It Works
-
-```mermaid
-graph TB
-    A[Your LLM Requests] --> B[Collect Historical Data]
-    B --> C[Compute Statistical Baselines]
-    C --> D[User-Specific Profiles]
-    
-    D --> E1[Mean Latency: 850ms]
-    D --> E2[Mean Cost: $0.003]
-    D --> E3[Mean Quality: 0.85]
-    D --> E4[P95 Thresholds]
-    D --> E5[P99 Thresholds]
-    
-    E1 --> F[New Request: 3200ms]
-    E2 --> F
-    E3 --> F
-    E4 --> F
-    E5 --> F
-    
-    F --> G{Z-Score Analysis}
-    G -->|Z > 3.0| H[🚨 Anomaly Detected!]
-    G -->|Z < 3.0| I[✅ Normal Behavior]
-    
-    H --> J[Create Alert]
-    J --> K[Deviation: +276%]
-    J --> L[Confidence: 99.7%]
-    
-    style A fill:#3b82f6
-    style D fill:#22c55e
-    style G fill:#f59e0b
-    style H fill:#ef4444
-    style I fill:#10b981
-```
-
-### Key Features
-
-#### 1. **Personalized Baselines**
-- Each user/project gets **unique thresholds**
-- No more false alerts from generic thresholds
-- Automatically adapts to your usage patterns
-
-#### 2. **Statistical Detection Methods**
-- **Z-Score Analysis**: Detects values 3+ standard deviations from mean (99.7% confidence)
-- **IQR Method**: Identifies outliers beyond 1.5× interquartile range
-- **Percentile Tracking**: P50, P95, P99 thresholds for each metric
-
-#### 3. **Auto-Tuning**
-- Baselines recompute **every 5 minutes**
-- Uses last 24 hours of data (configurable)
-- Minimum 30 samples required for accuracy
-- Adapts to seasonal patterns and usage changes
-
-#### 4. **Metrics Tracked**
-| Metric | What It Means | When It's Anomalous |
-|--------|--------------|---------------------|
-| **Latency** | Response time | Significantly slower than your average |
-| **Cost** | Per-request cost | Much higher than typical spending |
-| **Token Usage** | Total tokens | Unusually high consumption |
-| **Coherence** | Quality score | Lower quality than normal |
-| **Toxicity** | Safety score | Higher toxicity than baseline |
-| **Hallucination Risk** | Factuality | More uncertain than usual |
-
-### Example: Real Anomaly Detection
-
-```typescript
-// Your normal requests:
-// Latency: 800ms, 850ms, 790ms, 820ms (mean: 815ms, stddev: 26ms)
-// Cost: $0.003, $0.0031, $0.0029, $0.003 (mean: $0.003, stddev: $0.0001)
-
-// Then this request happens:
-const result = await client.generateContent(
-  'gemini-2.5-flash',
-  'Your prompt'
-);
-// Latency: 3200ms, Cost: $0.025
-
-// ObservAI detects:
-// Latency Z-score: (3200 - 815) / 26 = 91.7 (⚠️ HUGE anomaly!)
-// Cost Z-score: (0.025 - 0.003) / 0.0001 = 220 (⚠️ EXTREME anomaly!)
-
-// Alert created automatically:
-// "🚨 Abnormal Latency Detected: 3200ms (expected: 815ms, deviation: +292%, z-score: 91.7)"
-```
-
-### Dashboard Integration
-
-All anomalies appear in your dashboard with:
-- **Severity level** (info, warning, critical)
-- **Deviation percentage** from your baseline
-- **Statistical confidence** (z-score)
-- **Historical context** (P95, P99 thresholds)
-- **Root cause hints** (model, prompt category, time of day)
-
-### Configuration
-
-Customize detection sensitivity:
-
-```typescript
-// In adaptive-anomaly-detection edge function
-const config = {
-  z_score_threshold: 3.0,     // Default: 3.0 (99.7% confidence)
-                               // Lower = more sensitive (more alerts)
-                               // Higher = less sensitive (fewer alerts)
-  
-  iqr_multiplier: 1.5,        // Default: 1.5 (standard outlier detection)
-  
-  min_samples: 30,            // Minimum data points needed
-  
-  lookback_hours: 24,         // How far back to analyze
-};
-```
-
----
-
-## 📚 Complete Documentation
-
-### For SDK Integration
-- **[SDK Documentation (OpenAI-style)](./SDK_DOCS.md)** - Complete API reference, examples, and guides
-- **[SDK Setup Guide](./sdk/SETUP.md)** - Installation and deployment
-- **[SDK Examples](./sdk/examples/)** - Working code examples
-
-### For Architecture
-- **[System Architecture](./ARCHITECTURE.md)** - Complete system design
-- **[Visual Guide](./VISUAL_GUIDE.md)** - Diagrams and flowcharts
-- **[Quick Reference](./QUICK_REFERENCE.md)** - Fast lookup guide
-
----
-
-## 🚀 Deployment Guide
-
-### Prerequisites
-
-Before deploying, ensure you have:
-
-```bash
-✅ Node.js 18+ installed
-✅ Bun or npm installed
-✅ Supabase account (free tier works)
-✅ Google Cloud account with Vertex AI enabled
-✅ Vercel account (for frontend deployment)
-```
-
-### Step 1: Set Up Supabase (Backend)
-
-ObservAI's backend runs entirely on **Supabase** (PostgreSQL + Edge Functions).
-
-#### 1.1 Create Supabase Project
-
-```bash
-# Install Supabase CLI
-npm install -g supabase
-
-# Login to Supabase
-supabase login
-
-# Link to your project
-supabase link --project-ref YOUR_PROJECT_REF
-```
-
-#### 1.2 Run Database Migrations
-
-```bash
-# Apply all schema migrations
-supabase db push
-
-# Or manually run migrations
-psql postgresql://YOUR_CONNECTION_STRING < supabase/migrations/*.sql
-```
-
-This creates:
-- ✅ 11 tables (llm_requests, alerts, logs, user_baselines, anomalies, etc.)
-- ✅ 50+ indexes for performance
-- ✅ Row Level Security (RLS) policies
-- ✅ Materialized views for analytics
-- ✅ Triggers for auto-updates
-
-#### 1.3 Deploy Edge Functions
-
-```bash
-# Deploy tracking endpoint
-supabase functions deploy track-llm
-
-# Deploy ML anomaly detection
-supabase functions deploy adaptive-anomaly-detection
-
-# Set environment secrets
-supabase secrets set SUPABASE_URL="https://your-project.supabase.co"
-supabase secrets set SUPABASE_SERVICE_ROLE_KEY="your_service_role_key"
-```
-
-#### 1.4 Enable Authentication
-
-```bash
-# In Supabase Dashboard > Authentication > Providers
-✅ Enable Email/Password
-✅ Enable Google OAuth
-✅ Set up OAuth credentials (Google Cloud Console)
-```
-
-#### 1.5 Schedule Anomaly Detection (Optional)
-
-```sql
--- In Supabase SQL Editor
--- Requires pg_cron extension (available on paid plans)
-SELECT cron.schedule(
-  'adaptive-anomaly-detection',
-  '*/5 * * * *', -- Every 5 minutes
-  $$
-    SELECT net.http_post(
-      url:='https://YOUR_PROJECT_REF.supabase.co/functions/v1/adaptive-anomaly-detection',
-      headers:='{"Authorization": "Bearer YOUR_SERVICE_ROLE_KEY"}'::jsonb
-    );
-  $$
-);
-```
-
-**Backend deployed! ✅**  
-Your edge functions are now live at:
-- `https://YOUR_PROJECT_REF.supabase.co/functions/v1/track-llm`
-- `https://YOUR_PROJECT_REF.supabase.co/functions/v1/adaptive-anomaly-detection`
-
----
-
-### Step 2: Deploy Frontend (Vercel)
-
-ObservAI's dashboard is a React app that deploys perfectly on **Vercel**.
-
-#### 2.1 Prepare Environment Variables
-
-Create `.env.production`:
-
-```bash
-# Supabase
-VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-VITE_SUPABASE_ANON_KEY=your_anon_key
-
-# Google Vertex AI (for Lyra AI)
-VITE_VERTEX_AI_API_KEY=your_vertex_ai_api_key
-VITE_VERTEX_AI_PROJECT_ID=your_gcp_project_id
-
-# Datadog (Optional - for monitoring)
-VITE_DATADOG_APPLICATION_ID=your_datadog_app_id
-VITE_DATADOG_CLIENT_TOKEN=your_datadog_client_token
-VITE_DATADOG_SITE=datadoghq.com
-VITE_DATADOG_SERVICE=observai-dashboard
-VITE_DATADOG_ENV=production
-
-# App Config
-VITE_APP_NAME=ObservAI
-VITE_APP_URL=https://your-domain.com
-```
-
-#### 2.2 Deploy to Vercel
-
-**Option A: Using Vercel CLI**
-
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Deploy
-cd /home/shafwan-safi/Desktop/observability-hub
-vercel --prod
-
-# Add environment variables
-vercel env add VITE_SUPABASE_URL
-vercel env add VITE_SUPABASE_ANON_KEY
-vercel env add VITE_VERTEX_AI_API_KEY
-# ... add all variables
-```
-
-**Option B: Using Vercel Dashboard**
-
-1. Go to [vercel.com/new](https://vercel.com/new)
-2. Import your GitHub repository
-3. Configure build settings:
-   - **Framework Preset**: Vite
-   - **Build Command**: `bun run build` or `npm run build`
-   - **Output Directory**: `dist`
-   - **Install Command**: `bun install` or `npm install`
-4. Add environment variables in dashboard
-5. Click **Deploy**
-
-#### 2.3 Configure Custom Domain (Optional)
-
-```bash
-# In Vercel Dashboard
-1. Go to your project > Settings > Domains
-2. Add your domain (e.g., app.observai.com)
-3. Configure DNS:
-   - Type: CNAME
-   - Name: app
-   - Value: cname.vercel-dns.com
-```
-
-**Frontend deployed! ✅**  
-Your dashboard is live at: `https://your-project.vercel.app`
-
----
-
-### Step 3: Deploy SDK to NPM
-
-Make your SDK available for external projects.
-
-#### 3.1 Prepare Package
-
-```bash
-cd sdk
-
-# Update package.json with your info
-nano package.json
-
-# Change:
-# - name: "@your-org/observai-sdk"
-# - repository: "your-github-repo"
-# - author: "Your Name"
-```
-
-#### 3.2 Build and Publish
-
-```bash
-# Build the SDK
-npm run build
-
-# Test build locally
-npm pack
-
-# Login to NPM
-npm login
-
-# Publish (public)
-npm publish --access public
-
-# Or publish (scoped)
-npm publish
-```
-
-#### 3.3 Use Automated Script
-
-```bash
-# Use the deployment script
-cd ..
-./scripts/deploy-sdk.sh
-
-# This will:
-# ✅ Build SDK
-# ✅ Deploy edge function
-# ✅ Set secrets
-# ✅ Test endpoint
-# ✅ Print next steps
-```
-
-**SDK deployed! ✅**  
-Install in any project: `npm install @your-org/observai-sdk`
-
----
-
-### Step 4: Integrate SDK in Production Apps
-
-Now any project can use ObservAI for LLM tracking!
-
-#### Example: Production Node.js App
-
-```typescript
-// Install in your production app
-// npm install @your-org/observai-sdk
-
-import { ObservAIClient } from '@your-org/observai-sdk';
-
-const client = new ObservAIClient({
-  apiKey: process.env.VERTEX_AI_API_KEY!,
-  projectId: process.env.APP_NAME || 'production-app',
-  userId: req.user?.id || 'anonymous',
-  trackingEndpoint: 'https://YOUR_PROJECT_REF.supabase.co/functions/v1/track-llm',
-  batchMode: true,
-  batchSize: 50,
-  batchWaitMs: 5000,
-});
-
-// Use in your existing LLM code
-app.post('/api/chat', async (req, res) => {
-  const result = await client.generateContent(
-    'gemini-2.5-flash',
-    req.body.message,
-    {
-      sessionId: req.sessionID,
-      metadata: {
-        endpoint: '/api/chat',
-        userAgent: req.headers['user-agent'],
-        environment: process.env.NODE_ENV,
-      },
-    }
-  );
-
-  res.json({
-    response: result.response.text(),
-    cost: result.tracking.cost_usd,
-    quality: result.tracking.coherence_score,
-  });
-});
-```
-
-#### Example: Vercel Serverless Function
-
-```typescript
-// api/generate.ts
-import { ObservAIClient } from '@your-org/observai-sdk';
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-
-const client = new ObservAIClient({
-  apiKey: process.env.VERTEX_AI_API_KEY!,
-  projectId: 'vercel-app',
-  userId: 'vercel-user',
-  trackingEndpoint: process.env.OBSERVAI_ENDPOINT!,
-  batchMode: false, // Use immediate mode for serverless
-});
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const result = await client.generateContent(
-    'gemini-2.5-flash',
-    req.body.prompt
-  );
-
-  return res.json({
-    text: result.response.text(),
-    tracking: result.tracking,
-  });
-}
-```
-
----
-
-### Platform Recommendations
-
-| Component | Recommended Platform | Why? | Cost |
-|-----------|---------------------|------|------|
-| **Backend (Database + Edge Functions)** | **Supabase** | Built-in auth, real-time, RLS, serverless functions | Free tier: 500MB DB, 500K edge function invocations/month |
-| **Frontend (Dashboard)** | **Vercel** | Zero-config Vite deployment, auto HTTPS, CDN | Free tier: Unlimited hobby projects, 100GB bandwidth |
-| **SDK Distribution** | **NPM** | Standard package manager, version control | Free |
-| **Monitoring (Optional)** | **Datadog** | Best-in-class observability | Free tier: 5 hosts |
-
-### Alternative Platforms
-
-#### Backend Alternatives
-- **Render**: Good alternative to Supabase for full-stack apps
-- **Railway**: Simple deployment with PostgreSQL included
-- **Fly.io**: Global edge deployment for low latency
-
-#### Frontend Alternatives
-- **Netlify**: Similar to Vercel, great for static sites
-- **Cloudflare Pages**: Fastest CDN, generous free tier
-- **AWS Amplify**: Good for AWS-native stacks
-
----
-
-## 🏢 Using ObservAI in Production
-
-### Architecture for Production Software
-
-```mermaid
-graph TB
-    subgraph "Your Production App"
-        A1[Web Frontend]
-        A2[Mobile App]
-        A3[Backend API]
-        A4[Microservices]
-    end
-    
-    subgraph "ObservAI SDK"
-        B1[SDK Client]
-        B2[Batch Manager]
-        B3[Quality Analyzer]
-    end
-    
-    subgraph "ObservAI Cloud"
-        C1[Edge Function]
-        C2[ML Anomaly Detector]
-        C3[PostgreSQL]
-        C4[Real-time Engine]
-    end
-    
-    subgraph "ObservAI Dashboard"
-        D1[Team Dashboard]
-        D2[Alerts & Reports]
-        D3[Cost Analytics]
-        D4[Lyra AI Optimizer]
-    end
-    
-    A1 --> B1
-    A2 --> B1
-    A3 --> B1
-    A4 --> B1
-    
-    B1 --> B2
-    B2 --> B3
-    B3 --> C1
-    
-    C1 --> C3
-    C2 --> C3
-    C3 --> C4
-    
-    C4 --> D1
-    C4 --> D2
-    C4 --> D3
-    C4 --> D4
-    
-    style B1 fill:#6366f1
-    style C1 fill:#22c55e
-    style C2 fill:#f59e0b
-    style D1 fill:#ec4899
-```
-
-### Use Cases
-
-#### 1. **SaaS Applications**
-- Track LLM usage per tenant
-- Cost attribution to customers
-- Quality monitoring for customer-facing AI
-- Anomaly detection for abuse prevention
-
-#### 2. **E-commerce Platforms**
-- Monitor chatbot performance
-- Track product description generation costs
-- Detect low-quality AI responses
-- Optimize prompt costs at scale
-
-#### 3. **Content Platforms**
-- Track content generation quality
-- Monitor moderation AI accuracy
-- Cost optimization for high-volume generation
-- Real-time toxicity detection
-
-#### 4. **Enterprise Software**
-- Multi-project tracking
-- Team-based dashboards
-- Cost center attribution
-- Compliance monitoring
-
-### Security Considerations
-
-✅ **Data Isolation**: Each user's data protected by RLS  
-✅ **Encryption**: All data encrypted at rest (Supabase)  
-✅ **HTTPS Only**: All traffic over TLS 1.3  
-✅ **API Key Rotation**: Supports key rotation without downtime  
-✅ **Audit Logs**: Track all access to sensitive data  
-✅ **GDPR Compliant**: Data deletion and export APIs  
-
-### Scaling
-
-**ObservAI scales automatically:**
-
-| Requests/Day | Supabase Plan | Vercel Plan | Estimated Cost |
-|--------------|---------------|-------------|----------------|
-| < 100K | Free | Free | $0/month |
-| 100K - 1M | Pro ($25/mo) | Free | $25/month |
-| 1M - 10M | Pro ($25/mo) | Pro ($20/mo) | $45/month |
-| 10M+ | Team ($599/mo) | Pro ($20/mo) | $619/month |
-
-**Note**: These are infrastructure costs only. Your Vertex AI costs are separate.
-
----
-
-## 📊 Monitoring Your ObservAI Instance
-
-### Health Checks
-
-```bash
-# Check edge function
-curl https://YOUR_PROJECT_REF.supabase.co/functions/v1/track-llm
-
-# Check database
-psql $DATABASE_URL -c "SELECT COUNT(*) FROM llm_requests;"
-
-# Check anomaly detector
-curl -X POST https://YOUR_PROJECT_REF.supabase.co/functions/v1/adaptive-anomaly-detection
-```
-
-### Metrics to Track
-
-- **Ingestion Rate**: Requests/second into edge function
-- **Database Growth**: MB/day in llm_requests table
-- **Anomaly Detection Latency**: Time to compute baselines
-- **Dashboard Response Time**: P95 latency for API calls
-- **Alert Volume**: Anomalies detected per day
-
-### Setting Up Alerts
-
-```sql
--- Get notified when ingestion fails
-CREATE OR REPLACE FUNCTION check_ingestion_health()
-RETURNS void AS $$
-DECLARE
-  recent_failures INTEGER;
-BEGIN
-  SELECT COUNT(*) INTO recent_failures
-  FROM alerts
-  WHERE created_at > NOW() - INTERVAL '5 minutes'
-  AND severity = 'critical';
-  
-  IF recent_failures > 10 THEN
-    -- Send notification (integrate with your alerting system)
-    RAISE NOTICE 'High failure rate detected: % failures', recent_failures;
-  END IF;
-END;
-$$ LANGUAGE plpgsql;
-
--- Schedule check every 5 minutes
-SELECT cron.schedule('health-check', '*/5 * * * *', 'SELECT check_ingestion_health();');
-```
-
----
-
-## 🎯 Next Steps
-
-Now that you understand how to deploy ObservAI:
-
-1. **Deploy Backend**: Set up Supabase project and deploy edge functions
-2. **Deploy Frontend**: Deploy dashboard to Vercel
-3. **Publish SDK**: Make SDK available on NPM
-4. **Integrate**: Add SDK to your production applications
-5. **Monitor**: Watch your LLM usage, costs, and quality in real-time
-6. **Optimize**: Use Lyra AI to improve prompts and reduce costs
-
-### Getting Help
-
-- 📖 **[Complete SDK Docs](./SDK_DOCS.md)** - OpenAI-style documentation
-- 🏗️ **[Architecture Guide](./ARCHITECTURE.md)** - System design details
-- 📊 **[Visual Guide](./VISUAL_GUIDE.md)** - Diagrams and flowcharts
-- ⚡ **[Quick Reference](./QUICK_REFERENCE.md)** - Fast lookup
-
-**Questions?** Open an issue or reach out to support@observai.app
-
----
-
-## 📄 License
-
-MIT © 2025 ObservAI
-
----
-
-<div align="center">
-
-**Built with ❤️ using React, Vite, Supabase, and Vertex AI**
-
-[⬆ Back to Top](#observai-hub-)
-
-</div>
-
 
 ### **6. Time-Series Bucketing for Charts**
 

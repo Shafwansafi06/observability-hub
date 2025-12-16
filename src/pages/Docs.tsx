@@ -26,6 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
+import { MermaidDiagram } from '@/components/ui/mermaid-diagram';
 
 const Docs = () => {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -742,34 +743,217 @@ npm publish --access public`}
 
                 <Card className="mb-6">
                   <CardHeader>
-                    <CardTitle>Data Flow</CardTitle>
+                    <CardTitle>Data Flow Architecture</CardTitle>
+                    <CardDescription>End-to-end request tracking and analysis pipeline</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-4">
-                        <Badge className="min-w-[120px]">Your App</Badge>
-                        <ChevronRight className="h-4 w-4" />
-                        <Badge className="min-w-[120px]">ObservAI SDK</Badge>
-                        <ChevronRight className="h-4 w-4" />
-                        <Badge className="min-w-[120px]">Vertex AI</Badge>
-                      </div>
-                      <div className="flex items-center gap-4 pl-[136px]">
-                        <ChevronRight className="h-4 w-4 rotate-90" />
-                      </div>
-                      <div className="flex items-center gap-4 pl-[136px]">
-                        <Badge className="min-w-[120px]">Edge Function</Badge>
-                        <ChevronRight className="h-4 w-4" />
-                        <Badge className="min-w-[120px]">PostgreSQL</Badge>
-                      </div>
-                      <div className="flex items-center gap-4 pl-[136px]">
-                        <ChevronRight className="h-4 w-4 rotate-90" />
-                      </div>
-                      <div className="flex items-center gap-4 pl-[136px]">
-                        <Badge className="min-w-[120px]">ML Detector</Badge>
-                        <ChevronRight className="h-4 w-4" />
-                        <Badge className="min-w-[120px]">Dashboard</Badge>
-                      </div>
-                    </div>
+                    <MermaidDiagram
+                      chart={`
+graph TB
+    subgraph "Client Layer"
+        A[Your Application]
+    end
+    
+    subgraph "SDK Layer"
+        B[ObservAI SDK]
+        B1[Quality Analyzer]
+        B2[Cost Calculator]
+        B3[Batch Manager]
+        B --> B1
+        B --> B2
+        B --> B3
+    end
+    
+    subgraph "LLM Provider"
+        C[Vertex AI API]
+        C1[Gemini 2.0 Flash]
+        C2[Gemini 2.5 Pro]
+        C --> C1
+        C --> C2
+    end
+    
+    subgraph "Backend Layer"
+        D[Edge Function]
+        D1[Data Validation]
+        D2[Enrichment]
+        D --> D1
+        D --> D2
+        E[(PostgreSQL)]
+        E1[llm_requests]
+        E2[user_baselines]
+        E3[anomalies]
+        E --> E1
+        E --> E2
+        E --> E3
+    end
+    
+    subgraph "ML Layer"
+        F[ML Detector]
+        F1[Baseline Learning]
+        F2[Z-Score Analysis]
+        F3[Alert Generation]
+        F --> F1
+        F --> F2
+        F --> F3
+    end
+    
+    subgraph "Presentation Layer"
+        G[Dashboard]
+        G1[Overview]
+        G2[Anomalies]
+        G3[LLM Metrics]
+        G --> G1
+        G --> G2
+        G --> G3
+    end
+    
+    A -->|1. Request| B
+    B -->|2. LLM Call| C
+    C -->|3. Response| B
+    B -->|4. Track Data| D
+    D -->|5. Store| E
+    E -->|6. Analyze| F
+    F -->|7. Alerts| E
+    E -->|8. Query| G
+    G -->|9. Display| A
+    
+    style A fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:#fff
+    style B fill:#6366f1,stroke:#4f46e5,stroke-width:2px,color:#fff
+    style C fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:#fff
+    style D fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
+    style E fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
+    style F fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
+    style G fill:#ec4899,stroke:#db2777,stroke-width:2px,color:#fff
+                      `}
+                      className="w-full overflow-x-auto"
+                    />
+                  </CardContent>
+                </Card>
+
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle>Request Lifecycle</CardTitle>
+                    <CardDescription>Detailed sequence of a single LLM request</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <MermaidDiagram
+                      chart={`
+sequenceDiagram
+    participant App as Your App
+    participant SDK as ObservAI SDK
+    participant QA as Quality Analyzer
+    participant LLM as Vertex AI
+    participant EF as Edge Function
+    participant DB as PostgreSQL
+    participant ML as ML Detector
+    participant UI as Dashboard
+    
+    App->>SDK: generateContent(prompt)
+    activate SDK
+    
+    Note over SDK: Start tracking<br/>timestamp, metadata
+    
+    SDK->>LLM: API Request
+    activate LLM
+    LLM-->>SDK: Response + Tokens
+    deactivate LLM
+    
+    SDK->>QA: Analyze Quality
+    activate QA
+    Note over QA: Coherence<br/>Toxicity<br/>Hallucination
+    QA-->>SDK: Quality Scores
+    deactivate QA
+    
+    Note over SDK: Calculate cost<br/>latency, tokens
+    
+    SDK->>EF: Track Data (batch/immediate)
+    activate EF
+    EF->>DB: INSERT llm_request
+    deactivate EF
+    
+    SDK-->>App: Return response + tracking
+    deactivate SDK
+    
+    loop Every 5 minutes
+        ML->>DB: Query last 24h data
+        activate ML
+        Note over ML: Compute baselines<br/>Z-score analysis
+        ML->>DB: UPDATE user_baselines
+        ML->>DB: INSERT anomalies if detected
+        deactivate ML
+    end
+    
+    UI->>DB: Query metrics & alerts
+    activate UI
+    DB-->>UI: Return aggregated data
+    UI->>App: Display dashboard
+    deactivate UI
+                      `}
+                      className="w-full overflow-x-auto"
+                    />
+                  </CardContent>
+                </Card>
+
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle>ML Anomaly Detection Pipeline</CardTitle>
+                    <CardDescription>Adaptive learning and anomaly detection flow</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <MermaidDiagram
+                      chart={`
+graph LR
+    subgraph "Data Collection"
+        A[LLM Requests<br/>Last 24h]
+        A --> B[Group by User]
+    end
+    
+    subgraph "Statistical Analysis"
+        B --> C[Calculate Mean]
+        B --> D[Calculate StdDev]
+        B --> E[Calculate Percentiles<br/>P50, P95, P99]
+    end
+    
+    subgraph "Baseline Storage"
+        C --> F[(user_baselines)]
+        D --> F
+        E --> F
+    end
+    
+    subgraph "New Request"
+        G[Incoming Request]
+        G --> H[Extract Metrics<br/>latency, cost, tokens]
+    end
+    
+    subgraph "Anomaly Detection"
+        H --> I{Compare vs Baseline}
+        F --> I
+        I --> J[Calculate Z-Score]
+        J --> K{Z-Score > 3.0?}
+    end
+    
+    subgraph "Alert Generation"
+        K -->|Yes| L[Create Anomaly Record]
+        K -->|No| M[Normal Behavior]
+        L --> N[Generate Alert]
+        N --> O[Notify User]
+    end
+    
+    subgraph "Continuous Learning"
+        M --> P[Update Rolling Stats]
+        P --> F
+        L --> P
+    end
+    
+    style A fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:#fff
+    style F fill:#f59e0b,stroke:#d97706,stroke-width:3px,color:#fff
+    style I fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:#fff
+    style K fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
+    style N fill:#ec4899,stroke:#db2777,stroke-width:2px,color:#fff
+    style P fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
+                      `}
+                      className="w-full overflow-x-auto"
+                    />
                   </CardContent>
                 </Card>
 

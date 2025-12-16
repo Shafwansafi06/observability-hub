@@ -1,8 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
+/* stylelint-disable at-rule-no-unknown */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* stylelint-enable at-rule-no-unknown */
 
 @layer base {
   :root {
@@ -120,11 +122,14 @@
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
   
   body {
-    @apply bg-background text-foreground antialiased;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     font-family: 'Inter', system-ui, sans-serif;
   }
   
@@ -254,4 +259,41 @@
 /* Selection */
 ::selection {
   @apply bg-primary/30 text-foreground;
+}
+
+/* Mermaid Diagram Styles */
+.mermaid-diagram {
+  @apply w-full overflow-x-auto rounded-lg bg-slate-950/50 p-6 border border-border;
+}
+
+.mermaid-diagram svg {
+  @apply w-full h-auto;
+  max-width: 100%;
+}
+
+.mermaid-diagram .node rect,
+.mermaid-diagram .node circle,
+.mermaid-diagram .node polygon {
+  @apply stroke-2;
+}
+
+.mermaid-diagram .edgeLabel {
+  @apply bg-card/90 backdrop-blur-sm;
+}
+
+.mermaid-diagram .cluster rect {
+  @apply fill-card/50 stroke-border;
+}
+
+/* Dark mode adjustments for Mermaid */
+.dark .mermaid-diagram {
+  @apply bg-slate-900/50;
+}
+
+.dark .mermaid-diagram .node text {
+  @apply fill-slate-100;
+}
+
+.dark .mermaid-diagram .edgeLabel {
+  @apply text-slate-200;
 }
