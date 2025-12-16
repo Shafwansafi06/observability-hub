@@ -27,7 +27,7 @@ if (isDevelopmentWithoutConfig) {
 
 // Use dummy values if not configured (app will use mock data)
 const SAFE_SUPABASE_URL = SUPABASE_URL || 'https://placeholder.supabase.co';
-const SAFE_SUPABASE_ANON_KEY = SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDUxOTI4MDAsImV4cCI6MTk2MDc2ODgwMH0.placeholder';
+const SAFE_SUPABASE_ANON_KEY = SUPABASE_ANON_KEY || 'public-anon-placeholder-key';
 
 /**
  * Browser Supabase Client
