@@ -231,11 +231,12 @@ export function generateRequestId(): string {
  * Get user agent string (browser or Node.js)
  */
 export function getUserAgent(): string {
-  if (typeof navigator !== 'undefined' && navigator.userAgent) {
-    return navigator.userAgent;
+  const nav = (globalThis as any).navigator;
+  if (nav && nav.userAgent) {
+    return nav.userAgent;
   }
-  if (typeof process !== 'undefined' && process.version) {
-    return `Node.js/${process.version}`;
+  if (typeof process !== 'undefined' && (process as any).version) {
+    return `Node.js/${(process as any).version}`;
   }
   return 'Unknown';
 }

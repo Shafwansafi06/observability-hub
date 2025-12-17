@@ -1,18 +1,22 @@
 /**
  * ObservAI SDK - Core Client
- * Main client for tracking LLM usage with automatic observability
+ * Automatic LLM tracking for Gemini (@google/genai)
  */
 
-import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
+// Note: we avoid a static import of Google/Generative AI libraries so the
+// SDK can be used in test environments without installing those packages.
+// Consumers can inject an `aiClient` via `ObservAIConfig.aiClient` or
+// install one of the supported runtime packages (`@google/generative-ai` or `@google/genai`).
+
 import type {
   ObservAIConfig,
   TrackedRequest,
-  RequestBatch,
   IngestionResponse,
   TrackedGenerationConfig,
   GenerateContentOptions,
   TrackedGenerateContentResult,
-} from './types';
+} from "./types";
+
 import {
   calculateCost,
   estimateTokens,
@@ -22,54 +26,82 @@ import {
   getUserAgent,
   sanitizeText,
   retryWithBackoff,
-} from './utils';
+} from "./utils";
 
-/**
- * ObservAI Client for automatic LLM tracking
- * 
- * @example
- * ```typescript
- * const client = new ObservAIClient({
- *   apiKey: 'YOUR_VERTEX_AI_KEY',
- *   userId: 'user-123',
- *   projectName: 'my-project'
- * });
- * 
- * const result = await client.generateContent('gemini-2.5-flash', 'Hello, world!');
- * console.log(result.response.text());
- * ```
- */
 export class ObservAIClient {
-  private genAI: GoogleGenerativeAI;
-  private config: Required<ObservAIConfig>;
+  private ai: any;
+  private config: any;
   private sessionId: string;
   private requestBatch: TrackedRequest[] = [];
   private batchTimer?: NodeJS.Timeout;
 
   constructor(config: ObservAIConfig) {
-    this.genAI = new GoogleGenerativeAI(config.apiKey);
-    
-    // Set defaults
+    const apiKey = config.apiKey || process.env.GEMINI_API_KEY;
+
+    // If an `aiClient` is injected, use it (useful for tests or custom runtimes).
+    if (config.aiClient) {
+      this.ai = config.aiClient;
+    } else {
+      // Try to lazily require one of the supported Google client packages so
+      // consumers don't need to have them installed for tests that inject
+      // a mock client. If neither package is available and no apiKey was
+      // provided, fail fast with an actionable error.
+      let created: any = null;
+      if (apiKey) {
+        try {
+          // Try CommonJS require (works in Node.js). We try both package
+          // names that may be present depending on SDK versions.
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const GA = require('@google/generative-ai');
+          created = new GA.GoogleGenerativeAI(apiKey);
+        } catch (e1) {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            const GA2 = require('@google/genai');
+            created = new GA2.GoogleGenAI({ apiKey });
+          } catch (e2) {
+            // leave created null; we'll handle below
+          }
+        }
+      }
+
+      if (!created && !config.aiClient) {
+        if (!apiKey) {
+          throw new Error(
+            'ObservAI: GEMINI_API_KEY is required (pass apiKey or set env var) or provide an `aiClient` in config'
+          );
+        }
+        throw new Error(
+          'ObservAI: missing runtime dependency @google/generative-ai or @google/genai. Install one or pass `aiClient` in config.'
+        );
+      }
+
+      this.ai = created;
+    }
+
     this.config = {
-      apiKey: config.apiKey,
-      endpoint: config.endpoint || 'https://nztdwsnmttwwjticuphi.supabase.co/functions/v1/track-llm',
-      userId: config.userId || 'anonymous',
-      projectName: config.projectName || 'default',
-      debug: config.debug || false,
-      autoRetry: config.autoRetry !== false,
+      apiKey: apiKey ?? '',
+      endpoint:
+        config.endpoint ??
+        "https://nztdwsnmttwwjticuphi.supabase.co/functions/v1/track-llm",
+      userId: config.userId ?? "anonymous",
+      projectName: config.projectName ?? "default",
+      debug: config.debug ?? false,
+      autoRetry: config.autoRetry ?? true,
       batchMode: {
-        enabled: config.batchMode?.enabled || false,
-        maxBatchSize: config.batchMode?.maxBatchSize || 10,
-        maxWaitMs: config.batchMode?.maxWaitMs || 5000,
+        enabled: config.batchMode?.enabled ?? false,
+        maxBatchSize: config.batchMode?.maxBatchSize ?? 10,
+        maxWaitMs: config.batchMode?.maxWaitMs ?? 5000,
       },
-      metadata: config.metadata || {},
+      metadata: config.metadata ?? {},
     };
 
-    // Generate session ID
-    this.sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    this.sessionId = `session_${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2, 9)}`;
 
     if (this.config.debug) {
-      console.log('[ObservAI] Initialized with config:', {
+      console.log("[ObservAI] Initialized", {
         endpoint: this.config.endpoint,
         userId: this.config.userId,
         projectName: this.config.projectName,
@@ -77,7 +109,6 @@ export class ObservAIClient {
       });
     }
 
-    // Setup batch mode
     if (this.config.batchMode.enabled) {
       this.startBatchTimer();
     }
@@ -87,281 +118,211 @@ export class ObservAIClient {
    * Generate content with automatic tracking
    */
   async generateContent(
-    modelName: string,
-    prompt: string | any[],
+    model: string,
+    prompt: string,
     options?: GenerateContentOptions
   ): Promise<TrackedGenerateContentResult> {
-    const startTime = Date.now();
+    const start = Date.now();
     const requestId = generateRequestId();
-    const config = options?.config;
-    const shouldTrack = config?.disableTracking !== true;
+    const cfg = options?.config;
+    const shouldTrack = cfg?.disableTracking !== true;
+
+    // 🔑 Separate Gemini config from ObservAI config
+    const geminiConfig = cfg
+      ? {
+          temperature: cfg.temperature,
+          topP: cfg.topP,
+          topK: cfg.topK,
+          maxOutputTokens: cfg.maxOutputTokens,
+        }
+      : undefined;
 
     try {
-      // Get model
-      const model = this.genAI.getGenerativeModel({ 
-        model: modelName,
-        generationConfig: config,
+      const res = await this.ai.models.generateContent({
+        model,
+        contents: prompt,
+        ...(geminiConfig ? { generationConfig: geminiConfig } : {}),
       });
 
-      // Make the actual API call
-      const result = await model.generateContent(prompt);
-      const endTime = Date.now();
-      const latency = endTime - startTime;
+      const latency = Date.now() - start;
+      const responseText = res.text ?? "";
 
-      // Extract text
-      const promptText = typeof prompt === 'string' ? prompt : JSON.stringify(prompt);
-      const responseText = result.response.text();
-
-      // Calculate metrics
-      const tokensIn = estimateTokens(promptText);
+      const tokensIn = estimateTokens(prompt);
       const tokensOut = estimateTokens(responseText);
-      const tokensTotal = tokensIn + tokensOut;
-      const cost = calculateCost(modelName, tokensIn, tokensOut);
-      const quality = analyzeQuality(promptText, responseText);
+      const totalTokens = tokensIn + tokensOut;
 
-      // Track request
+      const cost = calculateCost(model, tokensIn, tokensOut);
+      const quality = analyzeQuality(prompt, responseText);
+
       if (shouldTrack) {
-        const trackedData: TrackedRequest = {
+        await this.trackRequest({
           request_id: requestId,
-          session_id: config?.sessionId || this.sessionId,
+          session_id: cfg?.sessionId ?? this.sessionId,
           user_id: this.config.userId,
-          
-          model: modelName,
-          prompt: sanitizeText(promptText),
+
+          model,
+          prompt: sanitizeText(prompt),
           response: sanitizeText(responseText),
-          prompt_category: config?.category || categorizePrompt(promptText),
-          
+          prompt_category: cfg?.category ?? categorizePrompt(prompt),
+
           latency_ms: latency,
           tokens_in: tokensIn,
           tokens_out: tokensOut,
-          tokens_total: tokensTotal,
+          tokens_total: totalTokens,
           cost_usd: cost,
-          
+
           coherence_score: quality.coherence,
           toxicity_score: quality.toxicity,
           hallucination_risk: quality.hallucination_risk,
           sentiment_score: quality.sentiment,
-          
-          temperature: config?.temperature,
-          max_tokens: (config as any)?.maxTokens,
-          top_p: config?.topP,
-          top_k: config?.topK,
-          
+
+          temperature: cfg?.temperature,
+          max_tokens: cfg?.maxOutputTokens,
+          top_p: cfg?.topP,
+          top_k: cfg?.topK,
+
           success: true,
           retry_count: 0,
-          
           user_agent: getUserAgent(),
           metadata: {
             ...this.config.metadata,
             ...options?.metadata,
             project_name: this.config.projectName,
           },
-          
           timestamp: new Date().toISOString(),
-        };
-
-        await this.trackRequest(trackedData);
-      }
-
-      // Add tracking metadata to result
-      const trackedResult = result as TrackedGenerateContentResult;
-      trackedResult.tracking = {
-        request_id: requestId,
-        latency_ms: latency,
-        tokens_used: tokensTotal,
-        cost_estimate_usd: cost,
-        tracked: shouldTrack,
-      };
-
-      if (this.config.debug) {
-        console.log('[ObservAI] Request tracked:', {
-          requestId,
-          latency,
-          tokens: tokensTotal,
-          cost: `$${cost.toFixed(6)}`,
         });
       }
 
-      return trackedResult;
-    } catch (error) {
-      const endTime = Date.now();
-      const latency = endTime - startTime;
-      const promptText = typeof prompt === 'string' ? prompt : JSON.stringify(prompt);
-
-      // Track failed request
-      if (shouldTrack) {
-        const failedData: TrackedRequest = {
+      return {
+        response: {
+          text: () => responseText,
+        },
+        tracking: {
           request_id: requestId,
-          session_id: config?.sessionId || this.sessionId,
-          user_id: this.config.userId,
-          
-          model: modelName,
-          prompt: sanitizeText(promptText),
-          response: '',
-          prompt_category: config?.category || categorizePrompt(promptText),
-          
           latency_ms: latency,
-          tokens_in: estimateTokens(promptText),
+          tokens_used: totalTokens,
+          cost_estimate_usd: cost,
+          tracked: shouldTrack,
+        },
+      };
+    } catch (err: any) {
+      const latency = Date.now() - start;
+
+      if (shouldTrack) {
+        await this.trackRequest({
+          request_id: requestId,
+          session_id: this.sessionId,
+          user_id: this.config.userId,
+
+          model,
+          prompt: sanitizeText(prompt),
+          response: "",
+          prompt_category: categorizePrompt(prompt),
+
+          latency_ms: latency,
+          tokens_in: estimateTokens(prompt),
           tokens_out: 0,
-          tokens_total: estimateTokens(promptText),
+          tokens_total: estimateTokens(prompt),
           cost_usd: 0,
-          
+
           success: false,
-          error_message: error instanceof Error ? error.message : String(error),
-          error_code: (error as any)?.code || 'UNKNOWN',
+          error_message: err?.message ?? "Unknown error",
+          error_code: err?.status ?? "UNKNOWN",
           retry_count: 0,
-          
           user_agent: getUserAgent(),
           metadata: {
             ...this.config.metadata,
-            ...options?.metadata,
             project_name: this.config.projectName,
           },
-          
           timestamp: new Date().toISOString(),
-        };
-
-        await this.trackRequest(failedData);
+        });
       }
 
-      throw error;
+      throw err;
     }
   }
 
-  /**
-   * Track a request (with batching support)
-   */
+  /* -------------------------------------------------------------------------- */
+  /*                                 Tracking                                   */
+  /* -------------------------------------------------------------------------- */
+
   private async trackRequest(data: TrackedRequest): Promise<void> {
     if (this.config.batchMode.enabled) {
-      // Add to batch
       this.requestBatch.push(data);
-
-      // Send if batch is full
-      if (this.requestBatch.length >= this.config.batchMode.maxBatchSize!) {
+      const maxBatchSize = this.config.batchMode.maxBatchSize ?? 10;
+      if (this.requestBatch.length >= maxBatchSize) {
         await this.flushBatch();
       }
     } else {
-      // Send immediately
       await this.sendTracking([data]);
     }
   }
 
-  /**
-   * Send tracking data to ObservAI backend
-   */
   private async sendTracking(requests: TrackedRequest[]): Promise<void> {
-    try {
-      const sendFn = async () => {
-        const response = await fetch(this.config.endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.config.apiKey}`,
-          },
-          body: JSON.stringify({
-            requests,
-            batch_id: generateRequestId(),
-            timestamp: new Date().toISOString(),
-          }),
-        });
+    const send = async () => {
+      const res = await fetch(this.config.endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.config.apiKey}`,
+        },
+        body: JSON.stringify({
+          requests,
+          batch_id: generateRequestId(),
+          timestamp: new Date().toISOString(),
+        }),
+      });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`ObservAI API error: ${response.status} - ${errorText}`);
-        }
-
-        const result = await response.json() as IngestionResponse;
-        
-        if (this.config.debug) {
-          console.log('[ObservAI] Tracking sent:', result);
-        }
-
-        return result;
-      };
-
-      // Retry if enabled
-      if (this.config.autoRetry) {
-        await retryWithBackoff(sendFn, 3, 1000);
-      } else {
-        await sendFn();
+      if (!res.ok) {
+        throw new Error(await res.text());
       }
-    } catch (error) {
+
       if (this.config.debug) {
-        console.error('[ObservAI] Failed to send tracking:', error);
+        const json = (await res.json()) as IngestionResponse;
+        console.log("[ObservAI] Tracking sent", json);
       }
-      // Don't throw - tracking failures shouldn't break the app
+    };
+
+    if (this.config.autoRetry) {
+      await retryWithBackoff(send, 3, 1000);
+    } else {
+      await send();
     }
   }
 
-  /**
-   * Start batch timer
-   */
-  private startBatchTimer(): void {
+  private startBatchTimer() {
+    const maxWait = this.config.batchMode.maxWaitMs ?? 5000;
     this.batchTimer = setInterval(() => {
-      if (this.requestBatch.length > 0) {
+      if (this.requestBatch.length) {
         this.flushBatch();
       }
-    }, this.config.batchMode.maxWaitMs);
+    }, maxWait);
   }
 
-  /**
-   * Flush pending batch
-   */
-  async flushBatch(): Promise<void> {
-    if (this.requestBatch.length === 0) return;
-
+  async flushBatch() {
+    if (!this.requestBatch.length) return;
     const batch = [...this.requestBatch];
     this.requestBatch = [];
-
     await this.sendTracking(batch);
   }
 
-  /**
-   * Get the underlying Google Generative AI client (for advanced usage)
-   */
-  getGenAI(): GoogleGenerativeAI {
-    return this.genAI;
-  }
+  /* -------------------------------------------------------------------------- */
+  /*                                 Sessions                                   */
+  /* -------------------------------------------------------------------------- */
 
-  /**
-   * Get a specific model (with tracking wrapper)
-   */
-  getModel(modelName: string, config?: TrackedGenerationConfig): GenerativeModel {
-    return this.genAI.getGenerativeModel({
-      model: modelName,
-      generationConfig: config,
-    });
-  }
-
-  /**
-   * Update configuration
-   */
-  updateConfig(updates: Partial<ObservAIConfig>): void {
-    Object.assign(this.config, updates);
-  }
-
-  /**
-   * Get current session ID
-   */
-  getSessionId(): string {
+  getSessionId() {
     return this.sessionId;
   }
 
-  /**
-   * Start a new session
-   */
-  newSession(): string {
-    this.sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  newSession() {
+    this.sessionId = `session_${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2, 9)}`;
     return this.sessionId;
   }
 
-  /**
-   * Cleanup (flush pending batches and clear timers)
-   */
-  async dispose(): Promise<void> {
-    if (this.batchTimer) {
-      clearInterval(this.batchTimer);
-    }
+  async dispose() {
+    if (this.batchTimer) clearInterval(this.batchTimer);
     await this.flushBatch();
   }
 }

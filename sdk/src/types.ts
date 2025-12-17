@@ -1,46 +1,51 @@
 /**
  * ObservAI SDK - Types
  * Type definitions for the ObservAI tracking client
+ *
+ * Compatible with @google/genai (latest)
  */
 
-import type { GenerateContentResult, GenerationConfig } from '@google/generative-ai';
+/* -------------------------------------------------------------------------- */
+/*                                Core Config                                 */
+/* -------------------------------------------------------------------------- */
 
-/**
- * Configuration for ObservAI client initialization
- */
 export interface ObservAIConfig {
-  /** Your Vertex AI API key */
-  apiKey: string;
-  
-  /** ObservAI backend endpoint (default: production) */
+  /** Gemini API key (AI Studio) */
+  apiKey?: string;
+
+  /** ObservAI backend endpoint */
   endpoint?: string;
-  
-  /** Your ObservAI user ID (for multi-user tracking) */
+
+  /** ObservAI user ID */
   userId?: string;
-  
-  /** Project name for grouping requests */
+
+  /** Project name for grouping */
   projectName?: string;
-  
+
   /** Enable debug logging */
   debug?: boolean;
-  
+
   /** Automatic retry on failure */
   autoRetry?: boolean;
-  
-  /** Batch tracking data (sends every N requests or M seconds) */
+
+  /** Batch tracking */
   batchMode?: {
     enabled: boolean;
     maxBatchSize?: number;
     maxWaitMs?: number;
   };
-  
-  /** Custom metadata to attach to all requests */
+
+  /** Metadata attached to all requests */
   metadata?: Record<string, any>;
+
+  /** Optional injected AI client for testing or custom runtimes */
+  aiClient?: any;
 }
 
-/**
- * Quality analysis scores
- */
+/* -------------------------------------------------------------------------- */
+/*                               Quality Metrics                               */
+/* -------------------------------------------------------------------------- */
+
 export interface QualityScores {
   coherence: number;
   toxicity: number;
@@ -48,103 +53,117 @@ export interface QualityScores {
   sentiment?: number;
 }
 
-/**
- * Tracked request data sent to ObservAI backend
- */
+/* -------------------------------------------------------------------------- */
+/*                              Tracking Payload                               */
+/* -------------------------------------------------------------------------- */
+
 export interface TrackedRequest {
-  // Request metadata
   request_id: string;
   session_id?: string;
   user_id?: string;
-  
-  // Model details
+
   model: string;
   prompt: string;
   response: string;
   prompt_category?: string;
-  
-  // Performance metrics
+
   latency_ms: number;
   tokens_in: number;
   tokens_out: number;
   tokens_total: number;
   cost_usd: number;
-  
-  // Quality metrics
+
   coherence_score?: number;
   toxicity_score?: number;
   hallucination_risk?: number;
   sentiment_score?: number;
-  
-  // Request parameters
+
   temperature?: number;
   max_tokens?: number;
   top_p?: number;
   top_k?: number;
-  
-  // Status
+
   success: boolean;
   error_message?: string;
   error_code?: string;
   retry_count: number;
-  
-  // Context
+
   user_agent?: string;
   metadata?: Record<string, any>;
-  
-  // Timestamp
+
   timestamp: string;
 }
 
-/**
- * Batch of tracked requests
- */
+/* -------------------------------------------------------------------------- */
+/*                              Ingestion API                                  */
+/* -------------------------------------------------------------------------- */
+
 export interface RequestBatch {
   requests: TrackedRequest[];
   batch_id: string;
   timestamp: string;
 }
 
-/**
- * Response from ObservAI ingestion API
- */
 export interface IngestionResponse {
   success: boolean;
-  request_id?: string;
+  batch_id?: string;
+  received?: number;
   message?: string;
   error?: string;
 }
 
-/**
- * Extended generation config with tracking options
- */
-export interface TrackedGenerationConfig extends GenerationConfig {
-  /** Custom category for this prompt */
-  category?: string;
-  
-  /** Session ID for conversation tracking */
-  sessionId?: string;
-  
-  /** Disable tracking for this specific request */
-  disableTracking?: boolean;
-}
+/* -------------------------------------------------------------------------- */
+/*                         Gemini Generation Config                             */
+/* -------------------------------------------------------------------------- */
 
 /**
- * Options for content generation with tracking
+ * Gemini-compatible generation config
+ * (matches @google/genai runtime behavior)
  */
+export interface TrackedGenerationConfig {
+  /** Gemini controls */
+  temperature?: number;
+  topP?: number;
+  topK?: number;
+  maxOutputTokens?: number;
+
+  /** ObservAI controls */
+  disableTracking?: boolean;
+  sessionId?: string;
+  category?: string;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                          Generate Content Options                            */
+/* -------------------------------------------------------------------------- */
+
 export interface GenerateContentOptions {
-  /** Generation configuration */
   config?: TrackedGenerationConfig;
-  
-  /** Additional metadata for this request */
   metadata?: Record<string, any>;
 }
 
+/* -------------------------------------------------------------------------- */
+/*                        Gemini Response (Minimal)                             */
+/* -------------------------------------------------------------------------- */
+
 /**
- * Extended result with tracking information
+ * Minimal Gemini response shape we rely on.
+ * This matches what @google/genai returns at runtime.
  */
-export interface TrackedGenerateContentResult extends GenerateContentResult {
-  /** Tracking metadata */
+export interface GeminiGenerateContentResponse {
+  text?: string;
+  candidates?: any[];
+}
+
+/* -------------------------------------------------------------------------- */
+/*                        ObservAI Wrapped Result                               */
+/* -------------------------------------------------------------------------- */
+
+export interface TrackedGenerateContentResult {
+  response: {
+    text(): string;
+  };
+
   tracking?: {
     request_id: string;
     latency_ms: number;
