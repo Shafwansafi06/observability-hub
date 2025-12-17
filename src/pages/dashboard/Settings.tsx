@@ -1,7 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabaseClient";
 import { seedAllData, clearDemoData } from "@/lib/seed-data";
 import {
   Bell,
@@ -55,7 +59,106 @@ const integrations = [
 export default function Settings({ theme, setTheme }: SettingsProps) {
   const [seeding, setSeeding] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
+  
+  // Settings state
+  const [settings, setSettings] = useState({
+    notifications: true,
+    emailAlerts: true,
+    autoRefresh: true,
+    refreshInterval: 30,
+    costAlerts: true,
+    costThreshold: 10,
+    darkMode: theme === 'dark',
+  });
+
+  // Load settings on mount
+  useEffect(() => {
+    loadSettings();
+  }, [user]);
+
+  // Sync theme with settings
+  useEffect(() => {
+    setSettings(prev => ({ ...prev, darkMode: theme === 'dark' }));
+  }, [theme]);
+
+  const loadSettings = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('settings')
+        .eq('user_id', user.id)
+        .single();
+
+      if (data && !error) {
+        const loadedSettings = data as any;
+        setSettings({ ...settings, ...loadedSettings.settings });
+      }
+    } catch (err) {
+      console.error('Failed to load settings:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "You must be logged in to save settings",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: user.id,
+          settings: settings,
+          updated_at: new Date().toISOString(),
+        } as any, {
+          onConflict: 'user_id'
+        });
+
+      if (error) throw error;
+
+      // Apply theme change immediately
+      if (settings.darkMode) {
+        document.documentElement.classList.add('dark');
+        setTheme('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        setTheme('light');
+      }
+
+      toast({
+        title: "Settings Saved",
+        description: "Your preferences have been saved successfully.",
+      });
+
+    } catch (err: any) {
+      console.error('Save settings error:', err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to save settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleSeedData = async () => {
     setSeeding(true);
@@ -372,9 +475,23 @@ export default function Settings({ theme, setTheme }: SettingsProps) {
 
       {/* Save Button */}
       <div className="flex justify-end">
-        <Button variant="default" size="lg">
-          <Save className="h-4 w-4 mr-2" />
-          Save Changes
+        <Button 
+          variant="default" 
+          size="lg" 
+          onClick={handleSaveSettings}
+          disabled={saving}
+        >
+          {saving ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4 mr-2" />
+              Save Changes
+            </>
+          )}
         </Button>
       </div>
     </div>

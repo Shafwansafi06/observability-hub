@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +28,8 @@ import {
   Search,
   User,
   LogOut,
+  Menu,
+  X,
 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -45,6 +48,7 @@ const sidebarLinks = [
 
 export function DashboardLayout({ theme, setTheme, children }: DashboardLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -68,90 +72,122 @@ export function DashboardLayout({ theme, setTheme, children }: DashboardLayoutPr
       .slice(0, 2);
   };
 
+  // Sidebar Content Component (reused for mobile and desktop)
+  const SidebarContent = ({ onLinkClick }: { onLinkClick?: () => void }) => (
+    <>
+      {/* Logo */}
+      <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
+        <Link to="/" className="flex items-center gap-2">
+          <Activity className="h-7 w-7 text-sidebar-primary shrink-0" />
+          {!collapsed && (
+            <span className="font-semibold text-lg text-sidebar-foreground">
+              Observ<span className="text-sidebar-primary">AI</span>
+            </span>
+          )}
+        </Link>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
+        {sidebarLinks.map((link) => {
+          const isActive = location.pathname === link.href;
+          return (
+            <Link
+              key={link.href}
+              to={link.href}
+              onClick={onLinkClick}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                isActive
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-lg shadow-sidebar-primary/25"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              )}
+            >
+              <link.icon className="h-5 w-5 shrink-0" />
+              {!collapsed && <span>{link.label}</span>}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Collapse button (desktop only) */}
+      <div className="hidden md:block p-2 border-t border-sidebar-border">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setCollapsed(!collapsed)}
+          className="w-full justify-center text-sidebar-foreground hover:bg-sidebar-accent"
+        >
+          {collapsed ? (
+            <ChevronRight className="h-4 w-4" />
+          ) : (
+            <>
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              <span>Collapse</span>
+            </>
+          )}
+        </Button>
+      </div>
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
+      {/* Mobile: Hamburger Menu with Sheet */}
+      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+        <SheetTrigger asChild className="md:hidden fixed top-4 left-4 z-50">
+          <Button variant="outline" size="icon" className="bg-background">
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-64 p-0 bg-sidebar">
+          <div className="h-full flex flex-col">
+            <SidebarContent onLinkClick={() => setMobileMenuOpen(false)} />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Desktop: Fixed Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 h-full bg-sidebar border-r border-sidebar-border transition-all duration-300 z-40 flex flex-col",
+          "hidden md:flex fixed left-0 top-0 h-full bg-sidebar border-r border-sidebar-border transition-all duration-300 z-40 flex-col",
           collapsed ? "w-16" : "w-64"
         )}
       >
-        {/* Logo */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
-          <Link to="/" className="flex items-center gap-2">
-            <Activity className="h-7 w-7 text-sidebar-primary shrink-0" />
-            {!collapsed && (
-              <span className="font-semibold text-lg text-sidebar-foreground">
-                Observ<span className="text-sidebar-primary">AI</span>
-              </span>
-            )}
-          </Link>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-          {sidebarLinks.map((link) => {
-            const isActive = location.pathname === link.href;
-            return (
-              <Link
-                key={link.href}
-                to={link.href}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                  isActive
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-lg shadow-sidebar-primary/25"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                )}
-              >
-                <link.icon className="h-5 w-5 shrink-0" />
-                {!collapsed && <span>{link.label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Collapse button */}
-        <div className="p-2 border-t border-sidebar-border">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setCollapsed(!collapsed)}
-            className="w-full justify-center text-sidebar-foreground hover:bg-sidebar-accent"
-          >
-            {collapsed ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <>
-                <ChevronLeft className="h-4 w-4 mr-2" />
-                <span>Collapse</span>
-              </>
-            )}
-          </Button>
-        </div>
+        <SidebarContent />
       </aside>
 
       {/* Main content */}
       <div
         className={cn(
           "flex-1 flex flex-col transition-all duration-300",
-          collapsed ? "ml-16" : "ml-64"
+          "md:ml-16 lg:ml-64", // Responsive margin
+          collapsed ? "md:ml-16" : "md:ml-64"
         )}
       >
         {/* Top bar */}
-        <header className="h-16 bg-card/50 backdrop-blur-xl border-b border-border sticky top-0 z-30 flex items-center justify-between px-6">
-          <div className="flex items-center gap-4">
-            <div className="relative">
+        <header className="h-16 bg-card/50 backdrop-blur-xl border-b border-border sticky top-0 z-30 flex items-center justify-between px-4 md:px-6">
+          {/* Left side - Search (hidden on mobile, spacer on mobile) */}
+          <div className="flex items-center gap-4 flex-1">
+            <div className="hidden sm:block relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Search metrics, logs, alerts..."
-                className="h-10 pl-10 pr-4 rounded-lg bg-muted/50 border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 w-64 lg:w-96 transition-all"
+                className="h-10 w-full pl-10 pr-4 rounded-lg bg-muted/50 border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
               />
+            </div>
+            {/* Mobile: Show logo when menu is closed */}
+            <div className="sm:hidden flex items-center gap-2 ml-12">
+              <Activity className="h-6 w-6 text-primary" />
+              <span className="font-semibold text-lg">
+                Observ<span className="text-primary">AI</span>
+              </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Right side - Actions */}
+          <div className="flex items-center gap-1 sm:gap-2">
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
               <span className="absolute top-1 right-1 h-2 w-2 bg-destructive rounded-full" />

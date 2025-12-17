@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "allowJs": true,
+    "checkJs": false,
+    "noImplicitAny": false,
+    "strict": false,
+    "skipLibCheck": true
+  },
+  "lint": {
+    "files": {
+      "exclude": ["supabase/functions/"]
+    }
+  },
+  "fmt": {
+    "files": {
+      "exclude": ["supabase/functions/"]
+    }
+  }
+}
