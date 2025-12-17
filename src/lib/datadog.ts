@@ -6,14 +6,15 @@
 // Datadog Browser RUM SDK Configuration
 import { datadogRum } from '@datadog/browser-rum';
 import { datadogLogs } from '@datadog/browser-logs';
+import { reactPlugin } from '@datadog/browser-rum-react';
 
 // Environment variables
-const DD_APPLICATION_ID = import.meta.env.VITE_DD_APPLICATION_ID || '';
-const DD_CLIENT_TOKEN = import.meta.env.VITE_DD_CLIENT_TOKEN || '';
-const DD_SITE = import.meta.env.VITE_DD_SITE || 'datadoghq.com';
-const DD_SERVICE = import.meta.env.VITE_DD_SERVICE || 'observai-frontend';
-const DD_ENV = import.meta.env.VITE_DD_ENV || import.meta.env.MODE || 'development';
-const DD_VERSION = import.meta.env.VITE_DD_VERSION || '1.0.0';
+const DD_APPLICATION_ID = import.meta.env.DD_APPLICATION_ID || 'ab879efd-1d89-44bc-b62c-0425d418d726';
+const DD_CLIENT_TOKEN = import.meta.env.DD_CLIENT_TOKEN || 'pub8d432fb02cc1b91abca8a86b13a79e99';
+const DD_SITE = import.meta.env.DD_SITE || 'us5.datadoghq.com';
+const DD_SERVICE = import.meta.env.DD_SERVICE || 'observai-frontend';
+const DD_ENV = import.meta.env.DD_ENV || import.meta.env.MODE || 'production';
+const DD_VERSION = import.meta.env.DD_VERSION || '1.0.0';
 
 /**
  * Initialize Datadog RUM (Real User Monitoring)
@@ -34,13 +35,16 @@ export function initializeDatadogRUM() {
     
     // Session configuration
     sessionSampleRate: 100, // 100% of sessions
-    sessionReplaySampleRate: 20, // 20% of sessions with replay
+    sessionReplaySampleRate: 0, // Disabled as per user config
     trackUserInteractions: true,
     trackResources: true,
     trackLongTasks: true,
     
     // Default privacy level
     defaultPrivacyLevel: 'mask-user-input',
+    
+    // React Router integration for route tracking
+    plugins: [reactPlugin({ router: true })],
     
     // Enable tracing
     allowedTracingUrls: [

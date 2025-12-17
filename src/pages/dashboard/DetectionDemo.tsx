@@ -18,7 +18,8 @@ import {
   ExternalLink,
   TrendingUp,
 } from 'lucide-react';
-import { detectionEngine, DEMO_SCENARIOS, DETECTION_RULES, type DetectionResult } from '@/lib/datadog-detection';
+import { DEMO_SCENARIOS, DETECTION_RULES, type DetectionResult } from '@/lib/datadog-detection';
+import { runDetectionAndPersist } from './useDetectionEngine';
 import { aiClient } from '@/lib/ai-client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -68,7 +69,7 @@ export default function DetectionDemo() {
       const cost = (aiResponse.tokens / 1000000) * 0.075; // $0.075 per 1M tokens for Flash
 
       // Run detection
-      const results = await detectionEngine.detectAnomalies({
+      const results = await runDetectionAndPersist({
         prompt: scenario.prompt,
         response: aiResponse.text,
         model: aiResponse.model,

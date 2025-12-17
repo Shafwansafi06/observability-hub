@@ -18,6 +18,7 @@ import LLMMetrics from "./pages/dashboard/LLMMetrics";
 import LogStream from "./pages/dashboard/LogStream";
 import Anomalies from "./pages/dashboard/Anomalies";
 import DetectionDemo from "./pages/dashboard/DetectionDemo";
+import DatadogVerification from "./pages/dashboard/DatadogVerification";
 import Settings from "./pages/dashboard/Settings";
 
 const queryClient = new QueryClient();
@@ -60,6 +61,7 @@ const App = () => {
                 <Route path="log-stream" element={<LogStream />} />
                 <Route path="anomalies" element={<Anomalies />} />
                 <Route path="detection-demo" element={<DetectionDemo />} />
+                <Route path="datadog-verify" element={<DatadogVerification />} />
                 <Route path="settings" element={<Settings theme={theme} setTheme={setTheme} />} />
               </Route>
 

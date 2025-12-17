@@ -48,6 +48,11 @@ export interface Alert {
   timestamp: Date;
   source: string;
   status: 'active' | 'acknowledged' | 'resolved';
+  detection_rule_id?: string;
+  threshold_value?: number;
+  current_value?: number;
+  recommendation?: string;
+  metadata?: Record<string, any>;
 }
 
 export interface LLMMetrics {
@@ -881,6 +886,11 @@ export async function addAlertDB(alert: Omit<Alert, 'id' | 'timestamp' | 'status
       severity: alert.severity,
       source: alert.source,
       status: 'active',
+      detection_rule_id: alert.detection_rule_id,
+      threshold_value: alert.threshold_value,
+      current_value: alert.current_value,
+      recommendation: alert.recommendation,
+      metadata: alert.metadata,
     } as any);
 
     if (error) {

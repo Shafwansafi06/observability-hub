@@ -16,6 +16,7 @@
 
 import { datadogLogs } from '@datadog/browser-logs';
 import { datadogRum } from '@datadog/browser-rum';
+import { addAlertDB } from '@/lib/observability-service';
 
 // ===== TYPES =====
 export interface DetectionRule {
@@ -178,7 +179,6 @@ export class DatadogDetectionEngine {
     // Check each rule
     for (const [ruleId, rule] of Object.entries(DETECTION_RULES)) {
       const check = this.checkRule(ruleId, rule, metrics);
-      
       if (check.triggered) {
         const result: DetectionResult = {
           ruleId,
@@ -202,9 +202,24 @@ export class DatadogDetectionEngine {
         };
 
         results.push(result);
-        
+
         // Send to Datadog
         await this.sendToDatadog(result, rule);
+
+        // Persist to app's anomaly/alert system so it shows in Anomalies
+        await addAlertDB({
+          title: `Detection: ${rule.name}`,
+          description: `Rule ${ruleId} triggered. ${rule.description}\n\nRecommendation: ${rule.action}`,
+          severity: rule.severity,
+          source: 'detection-engine',
+          detection_rule_id: ruleId,
+          threshold_value: rule.threshold,
+          current_value: check.value,
+          recommendation: rule.action,
+          metadata: {
+            ...result.context,
+          },
+        });
       }
     }
 
@@ -364,11 +379,10 @@ export class DatadogDetectionEngine {
    * Create a Datadog Event via API
    */
   private async createDatadogEvent(result: DetectionResult, rule: DetectionRule) {
-    const ddApiKey = import.meta.env.VITE_DD_API_KEY;
-    const ddSite = import.meta.env.VITE_DD_SITE || 'datadoghq.com';
 
+    const ddApiKey = import.meta.env.DD_API_KEY;
+    const ddSite = import.meta.env.DD_SITE || 'us5.datadoghq.com';
     if (!ddApiKey) {
-      console.warn('[Detection Engine] DD_API_KEY not configured, skipping event creation');
       return;
     }
 

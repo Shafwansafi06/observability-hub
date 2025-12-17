@@ -24,46 +24,79 @@ export function initializeDatadogMonitoring() {
     return;
   }
 
-  // Initialize RUM
-  datadogRum.init({
-    applicationId,
-    clientToken,
-    site,
-    service: DD_SERVICE,
-    env: DD_ENV,
-    version: DD_VERSION,
-    sessionSampleRate: 100,
-    sessionReplaySampleRate: 100,
-    trackUserInteractions: true,
-    trackResources: true,
-    trackLongTasks: true,
-    defaultPrivacyLevel: 'mask-user-input',
-    allowedTracingUrls: [
-      'https://generativelanguage.googleapis.com',
-      { match: /https:\/\/.*\.supabase\.co/, propagatorTypes: ['tracecontext'] },
-    ],
-    enableExperimentalFeatures: ['clickmap'],
-  });
+  try {
+    // Initialize RUM
+    datadogRum.init({
+      applicationId,
+      clientToken,
+      site,
+      service: DD_SERVICE,
+      env: DD_ENV,
+      version: DD_VERSION,
+      sessionSampleRate: 100,
+      sessionReplaySampleRate: 100,
+      trackUserInteractions: true,
+      trackResources: true,
+      trackLongTasks: true,
+      defaultPrivacyLevel: 'mask-user-input',
+      allowedTracingUrls: [
+        'https://generativelanguage.googleapis.com',
+        { match: /https:\/\/.*\.supabase\.co/, propagatorTypes: ['tracecontext'] },
+        { match: /http:\/\/localhost/, propagatorTypes: ['datadog'] },
+      ],
+      enableExperimentalFeatures: ['clickmap'],
+    });
 
-  // Initialize Logs
-  datadogLogs.init({
-    clientToken,
-    site,
-    service: DD_SERVICE,
-    env: DD_ENV,
-    version: DD_VERSION,
-    forwardErrorsToLogs: true,
-    sessionSampleRate: 100,
-  });
+    // CRITICAL: Start session replay recording
+    datadogRum.startSessionReplayRecording();
+    
+    console.log('✅ Datadog RUM initialized and recording started');
+    console.log('📊 RUM Configuration:', {
+      applicationId: applicationId.substring(0, 8) + '...',
+      site,
+      service: DD_SERVICE,
+      env: DD_ENV,
+    });
+
+  } catch (error) {
+    console.error('❌ Datadog RUM initialization failed:', error);
+  }
+
+  try {
+    // Initialize Logs
+    datadogLogs.init({
+      clientToken,
+      site,
+      service: DD_SERVICE,
+      env: DD_ENV,
+      version: DD_VERSION,
+      forwardErrorsToLogs: true,
+      forwardConsoleLogs: ['error', 'warn'],
+      sessionSampleRate: 100,
+    });
+
+    console.log('✅ Datadog Logs initialized');
+    
+  } catch (error) {
+    console.error('❌ Datadog Logs initialization failed:', error);
+  }
 
   // Set global context
   datadogRum.setGlobalContextProperty('team', 'observai-engineering');
   datadogRum.setGlobalContextProperty('product', 'llm-observability');
+  datadogRum.setGlobalContextProperty('platform', 'web');
   
   datadogLogs.setGlobalContextProperty('team', 'observai-engineering');
   datadogLogs.setGlobalContextProperty('product', 'llm-observability');
 
-  console.log('✅ Datadog RUM + Logs initialized');
+  // Send initial page load event
+  datadogRum.addAction('app_initialized', {
+    'app.version': DD_VERSION,
+    'app.env': DD_ENV,
+    'app.service': DD_SERVICE,
+  });
+
+  console.log('✅ Datadog monitoring fully initialized');
 }
 
 /**

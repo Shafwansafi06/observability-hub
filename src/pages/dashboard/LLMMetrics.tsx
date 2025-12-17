@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ModelType, MODEL_CONFIGS } from "@/lib/vertex-ai/client";
+import { runDetectionAndPersist } from "./useDetectionEngine";
 import {
   Brain,
   Gauge,
@@ -84,7 +85,20 @@ export default function LLMMetrics() {
         cost: cost,
         response: responseText,
       };
+
       setLastPromptAnalysis(analysis);
+
+      // Run detection and persist anomalies
+      await runDetectionAndPersist({
+        prompt,
+        response: responseText,
+        model: result.model,
+        tokens: estimatedOutputTokens,
+        cost,
+        latency: result.latency,
+        userId: 'llm-metrics-tester',
+        requestId: `llm-metrics-${Date.now()}`,
+      });
       
     } catch (err) {
       setResponse(`Error: ${err instanceof Error ? err.message : 'Failed to get response'}`);
