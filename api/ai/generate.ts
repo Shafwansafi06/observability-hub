@@ -234,17 +234,31 @@ export default async function handler(
     return;
   }
 
-  // Check if API key is configured
-  if (!VERTEX_AI_API_KEY) {
-    console.error('❌ VERTEX_AI_API_KEY is not configured on server');
-    console.error('Environment variables available:', Object.keys(process.env).filter(k => k.includes('VERTEX') || k.includes('GCP')));
+  // Check if EITHER API key OR service account is configured
+  if (!VERTEX_AI_API_KEY && !GCP_SERVICE_ACCOUNT_KEY) {
+    console.error('❌ Neither VERTEX_AI_API_KEY nor GCP_SERVICE_ACCOUNT_KEY is configured');
+    console.error('Available env vars:', Object.keys(process.env).filter(k => k.includes('VERTEX') || k.includes('GCP')));
     res.status(503).json({ 
-      error: 'VERTEX_AI_API_KEY not configured in Vercel environment variables',
+      error: 'Vertex AI not configured. Add VERTEX_AI_API_KEY or GCP_SERVICE_ACCOUNT_KEY to Vercel environment variables',
       code: 'SERVICE_UNAVAILABLE',
-      details: 'Add VERTEX_AI_API_KEY (no VITE_ prefix) in Vercel Dashboard → Settings → Environment Variables'
-    } as ErrorResponse);
+      details: {
+        missing: 'VERTEX_AI_API_KEY or GCP_SERVICE_ACCOUNT_KEY',
+        hasApiKey: !!VERTEX_AI_API_KEY,
+        hasServiceAccount: !!GCP_SERVICE_ACCOUNT_KEY,
+        hasProjectId: !!GCP_PROJECT_ID,
+        projectId: GCP_PROJECT_ID || 'NOT_SET',
+        location: VERTEX_AI_LOCATION,
+      }
+    } as any);
     return;
   }
+
+  console.log('[AI Gateway] Config:', {
+    hasApiKey: !!VERTEX_AI_API_KEY,
+    hasServiceAccount: !!GCP_SERVICE_ACCOUNT_KEY,
+    projectId: GCP_PROJECT_ID || 'NOT_SET',
+    location: VERTEX_AI_LOCATION,
+  });
 
   const startTime = Date.now();
   const clientIP = getClientIP(req);
@@ -402,11 +416,18 @@ export default async function handler(
     res.status(200).json(result);
 
   } catch (error: any) {
-    console.error('[AI Gateway] Error:', sanitizeError(error));
+    console.error('[AI Gateway] Unexpected Error:', {
+      message: sanitizeError(error),
+      stack: error?.stack?.split('\n').slice(0, 3).join('\n'),
+      hasApiKey: !!VERTEX_AI_API_KEY,
+      hasServiceAccount: !!GCP_SERVICE_ACCOUNT_KEY,
+      projectId: GCP_PROJECT_ID,
+    });
     
     res.status(500).json({
       error: 'An unexpected error occurred',
       code: 'INTERNAL_ERROR',
-    } as ErrorResponse);
+      details: sanitizeError(error),
+    } as any);
   }
 }
