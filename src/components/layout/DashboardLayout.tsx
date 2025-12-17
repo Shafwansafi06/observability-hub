@@ -43,6 +43,7 @@ const sidebarLinks = [
   { href: "/dashboard/llm-metrics", label: "LLM Metrics", icon: Brain },
   { href: "/dashboard/log-stream", label: "Log Stream", icon: ScrollText },
   { href: "/dashboard/anomalies", label: "Anomalies", icon: AlertTriangle },
+  { href: "/dashboard/detection-demo", label: "Detection Demo", icon: Activity },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
