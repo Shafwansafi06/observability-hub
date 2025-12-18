@@ -39,52 +39,92 @@ export function InvestigationModal({ alert, open, onClose, onResolve }: Investig
     setAnalyzing(true);
     setAnalysis("");
 
+    // Rate limiting: Add delay between requests
+    const lastRequestTime = localStorage.getItem('lastAIRequestTime');
+    const now = Date.now();
+    if (lastRequestTime) {
+      const timeSinceLastRequest = now - parseInt(lastRequestTime);
+      const minDelay = 2000; // 2 seconds minimum between requests
+      if (timeSinceLastRequest < minDelay) {
+        await new Promise(resolve => setTimeout(resolve, minDelay - timeSinceLastRequest));
+      }
+    }
+    localStorage.setItem('lastAIRequestTime', now.toString());
+
     try {
-      const prompt = `You are an expert AI/ML engineer analyzing a critical alert in an LLM observability system.
+      // Simplified prompt to reduce token usage and timeout risk
+      const prompt = `Analyze this LLM observability alert and provide fix recommendations:
 
-**Alert Details:**
-- Title: ${alert.title}
-- Description: ${alert.description}
-- Severity: ${alert.severity}
-- Detection Rule: ${alert.detection_rule_id || 'N/A'}
-- Threshold: ${alert.threshold_value || 'N/A'}
-- Current Value: ${alert.current_value || 'N/A'}
-- Recommendation: ${alert.recommendation || 'N/A'}
+Alert: ${alert.title}
+Rule: ${alert.detection_rule_id || 'N/A'}
+Issue: ${alert.description}
+Severity: ${alert.severity}
+Value: ${alert.current_value} (threshold: ${alert.threshold_value})
 
-**Context:**
-${JSON.stringify(alert.metadata || {}, null, 2)}
+Provide:
+1. Root Cause (2-3 sentences)
+2. Impact (2-3 sentences)
+3. Fix Steps (3-5 bullet points)
+4. Prevention (2-3 bullet points)
+5. Code Example (if applicable)
 
-**Your Task:**
-Provide a comprehensive analysis and actionable fix recommendations in the following format:
+Be concise and actionable.`;
 
-## 🔍 Root Cause Analysis
-[Explain what caused this alert to trigger]
+      // Retry logic with exponential backoff
+      let retries = 3;
+      let lastError: Error | null = null;
+      
+      while (retries > 0) {
+        try {
+          const response = await Promise.race([
+            aiClient.generate({
+              prompt,
+              model: 'gemini-2.5-flash', // Use Flash for faster response
+              temperature: 0.3,
+              maxTokens: 1500,
+            }),
+            new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error('Request timeout after 30s')), 30000)
+            )
+          ]);
 
-## ⚠️ Impact Assessment
-[Describe the potential impact on the system]
+          setAnalysis(response.text);
+          return; // Success!
+        } catch (error: any) {
+          lastError = error;
+          retries--;
+          
+          if (retries > 0) {
+            // Wait before retry (exponential backoff)
+            const delay = (4 - retries) * 2000; // 2s, 4s, 6s
+            console.log(`Retry in ${delay}ms... (${retries} attempts left)`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+        }
+      }
 
-## 🛠️ Fix Recommendations
-[Provide 3-5 specific, actionable steps to fix this issue]
-
-## 📊 Prevention Strategies
-[Suggest ways to prevent this issue in the future]
-
-## 💡 Code Examples
-[If applicable, provide code snippets or configuration changes]
-
-Be specific, technical, and actionable. Focus on practical solutions.`;
-
-      const response = await aiClient.generate({
-        prompt,
-        model: 'gemini-2.5-pro',
-        temperature: 0.3,
-        maxTokens: 2048,
-      });
-
-      setAnalysis(response.text);
-    } catch (error) {
+      // All retries failed
+      throw lastError;
+    } catch (error: any) {
       console.error('Analysis error:', error);
-      setAnalysis('❌ Failed to analyze the alert. Please try again.');
+      const errorMessage = error?.message || 'Unknown error';
+      setAnalysis(`❌ **Analysis Failed**
+
+**Error:** ${errorMessage}
+
+**Possible Solutions:**
+1. The AI service might be rate-limited. Wait 30 seconds and try again.
+2. The request timed out. Try again with a simpler alert.
+3. Check your API key configuration in .env file.
+
+**Manual Recommendations for ${alert.detection_rule_id}:**
+${alert.recommendation || 'Review the alert details and consult documentation.'}
+
+**Quick Fixes:**
+- For high latency: Optimize model selection, reduce token limits
+- For toxicity: Implement content filtering, review safety settings
+- For hallucination: Add fact-checking, use retrieval augmentation
+- For cost spikes: Set budget limits, use smaller models`);
     } finally {
       setAnalyzing(false);
     }

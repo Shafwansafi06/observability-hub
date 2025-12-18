@@ -48,23 +48,53 @@ export class PromptOptimizer {
   async optimizePrompt(analysis: PromptAnalysis): Promise<OptimizationResult> {
     const complexity = this.detectComplexity(analysis);
     const issues = this.diagnoseIssues(analysis);
-    const context = this.buildOptimizationContext(analysis, issues);
 
-    // Use Gemini Pro for complex optimizations, Flash for simple
-    const model = complexity === 'complex' ? ModelType.TEXT_PRO : ModelType.TEXT_FAST;
+    // Use Gemini Flash for faster, more reliable responses
+    const model = ModelType.TEXT_FAST;
 
     const lyraPrompt = this.buildLyraPrompt(analysis, issues, complexity);
 
     try {
-      const response = await vertexAI.predict({
-        prompt: lyraPrompt,
-        model,
-        temperature: 0.7,
-        maxTokens: 8192,  // Increased to get complete optimized prompts
-      });
+      // Add timeout and retry logic
+      let retries = 2;
+      let lastError: Error | null = null;
 
-      return this.parseOptimizationResponse(response.text || '', analysis, issues, complexity);
+      while (retries > 0) {
+        try {
+          const response = await Promise.race([
+            vertexAI.predict({
+              prompt: lyraPrompt,
+              model,
+              temperature: 0.7,
+              maxTokens: 2048,  // Reduced for faster, more reliable responses
+            }),
+            new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error('Optimization timeout')), 25000)
+            )
+          ]);
+
+          // Validate response has content
+          if (!response.text || response.text.trim().length < 50) {
+            throw new Error('Incomplete optimization response');
+          }
+
+          return this.parseOptimizationResponse(response.text, analysis, issues, complexity);
+        } catch (error: any) {
+          lastError = error;
+          retries--;
+          
+          if (retries > 0) {
+            console.log(`Retrying optimization... (${retries} attempts left)`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+      }
+
+      // All retries failed, use rule-based fallback
+      console.warn('AI optimization failed, using rule-based fallback:', lastError);
+      return this.ruleBasedOptimization(analysis, issues, complexity);
     } catch (error) {
+      console.error('Optimization error:', error);
       // Fallback to rule-based optimization
       return this.ruleBasedOptimization(analysis, issues, complexity);
     }
