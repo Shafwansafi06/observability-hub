@@ -12,6 +12,8 @@
 export interface ObservAIConfig {
   /** Gemini API key (AI Studio) */
   apiKey?: string;
+  /** User email to associate tracked requests with a Supabase user */
+  userEmail?: string;
 
   /** ObservAI backend endpoint */
   endpoint?: string;
@@ -61,6 +63,8 @@ export interface TrackedRequest {
   request_id: string;
   session_id?: string;
   user_id?: string;
+  /** Optional user email to help server resolve user_id */
+  user_email?: string;
 
   model: string;
   prompt: string;

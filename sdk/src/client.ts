@@ -84,6 +84,7 @@ export class ObservAIClient {
       endpoint:
         config.endpoint ??
         "https://nztdwsnmttwwjticuphi.supabase.co/functions/v1/track-llm",
+      userEmail: config.userEmail ?? '',
       userId: config.userId ?? "anonymous",
       projectName: config.projectName ?? "default",
       debug: config.debug ?? false,
@@ -184,6 +185,7 @@ export class ObservAIClient {
           success: true,
           retry_count: 0,
           user_agent: getUserAgent(),
+          user_email: options?.metadata?.user_email ?? this.config.userEmail ?? undefined,
           metadata: {
             ...this.config.metadata,
             ...options?.metadata,
@@ -230,6 +232,7 @@ export class ObservAIClient {
           error_code: err?.status ?? "UNKNOWN",
           retry_count: 0,
           user_agent: getUserAgent(),
+          user_email: options?.metadata?.user_email ?? this.config.userEmail ?? undefined,
           metadata: {
             ...this.config.metadata,
             project_name: this.config.projectName,
