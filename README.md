@@ -24,7 +24,7 @@
   <img src="https://img.shields.io/badge/Tailwind-3.4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind"/>
   <img src="https://img.shields.io/badge/Datadog-RUM-632CA6?logo=datadog&logoColor=white" alt="Datadog"/>
   <img src="https://img.shields.io/badge/Vertex_AI-Gemini-4285F4?logo=google-cloud&logoColor=white" alt="Vertex AI"/>
-  [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Shafwansafi06/observability-hub)
+  <a href="https://deepwiki.com/Shafwansafi06/observability-hub"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
 
 ---
