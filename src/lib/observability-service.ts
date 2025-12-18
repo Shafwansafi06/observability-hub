@@ -371,7 +371,16 @@ export function addAlert(alert: Omit<Alert, 'id' | 'timestamp' | 'status'>) {
     ...alert,
   };
   
+  console.log('[addAlert] 💾 Adding alert to in-memory store:', {
+    id: entry.id,
+    title: entry.title,
+    severity: entry.severity,
+    detection_rule_id: alert.detection_rule_id,
+  });
+  
   metricsStore.alerts.push(entry);
+
+  console.log(`[addAlert] ✅ Alert added. Total alerts in memory: ${metricsStore.alerts.length}`);
 
   // Keep only last 100 alerts
   if (metricsStore.alerts.length > 100) {
@@ -872,12 +881,24 @@ export async function resolveAlertDB(alertId: string): Promise<void> {
  * Add alert to Supabase
  */
 export async function addAlertDB(alert: Omit<Alert, 'id' | 'timestamp' | 'status'>): Promise<void> {
+  console.log('[addAlertDB] 📥 Attempting to add alert:', {
+    title: alert.title,
+    severity: alert.severity,
+    source: alert.source,
+    detection_rule_id: alert.detection_rule_id,
+    threshold_value: alert.threshold_value,
+    current_value: alert.current_value,
+  });
+  
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
+      console.warn('[addAlertDB] ⚠️ No user authenticated, adding to memory only');
       addAlert(alert);
       return;
     }
+
+    console.log('[addAlertDB] 👤 User authenticated:', user.id);
 
     const { error } = await supabase.from('alerts').insert({
       user_id: user.id,
@@ -894,14 +915,15 @@ export async function addAlertDB(alert: Omit<Alert, 'id' | 'timestamp' | 'status
     } as any);
 
     if (error) {
-      console.error('Failed to add alert to DB:', error);
+      console.error('[addAlertDB] ❌ Failed to add alert to DB:', error);
       addAlert(alert); // Fallback to memory
     } else {
+      console.log('[addAlertDB] ✅ Alert added to Supabase successfully');
       // Also add to local store for immediate UI update
       addAlert(alert);
     }
   } catch (error) {
-    console.error('Error adding alert to DB:', error);
+    console.error('[addAlertDB] ❌ Error adding alert to DB:', error);
     addAlert(alert);
   }
 }

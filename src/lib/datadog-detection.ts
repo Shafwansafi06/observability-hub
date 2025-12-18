@@ -176,9 +176,25 @@ export class DatadogDetectionEngine {
     const results: DetectionResult[] = [];
     const timestamp = new Date().toISOString();
 
+    console.log('[Detection Engine] 🔍 Running detection with metrics:', {
+      model: metrics.model,
+      tokens: metrics.tokens,
+      latency: metrics.latency,
+      cost: metrics.cost,
+      hallucinationRisk: metrics.hallucinationRisk,
+      toxicity: metrics.toxicity,
+      promptInjectionDetected: metrics.promptInjectionDetected,
+      promptPreview: metrics.prompt?.substring(0, 100),
+    });
+
     // Check each rule
     for (const [ruleId, rule] of Object.entries(DETECTION_RULES)) {
       const check = this.checkRule(ruleId, rule, metrics);
+      console.log(`[Detection Engine] Rule ${ruleId} (${rule.name}):`, {
+        triggered: check.triggered,
+        value: check.value,
+        threshold: rule.threshold,
+      });
       if (check.triggered) {
         const result: DetectionResult = {
           ruleId,
@@ -203,10 +219,13 @@ export class DatadogDetectionEngine {
 
         results.push(result);
 
+        console.log(`[Detection Engine] ✅ Rule ${ruleId} TRIGGERED! Creating alert...`);
+
         // Send to Datadog
         await this.sendToDatadog(result, rule);
 
         // Persist to app's anomaly/alert system so it shows in Anomalies
+        console.log('[Detection Engine] 📝 Persisting alert to database...');
         await addAlertDB({
           title: `Detection: ${rule.name}`,
           description: `Rule ${ruleId} triggered. ${rule.description}\n\nRecommendation: ${rule.action}`,
@@ -220,9 +239,11 @@ export class DatadogDetectionEngine {
             ...result.context,
           },
         });
+        console.log('[Detection Engine] ✅ Alert persisted successfully');
       }
     }
 
+    console.log(`[Detection Engine] 🏁 Detection complete. ${results.length} rule(s) triggered.`);
     return results;
   }
 
@@ -305,13 +326,28 @@ export class DatadogDetectionEngine {
   private estimateToxicity(metrics: LLMMetrics): number {
     const text = (metrics.prompt + ' ' + metrics.response).toLowerCase();
     
+    // Expanded toxic patterns for better detection
     const toxicPatterns = [
       'hate', 'stupid', 'idiot', 'aggressive', 'insult', 'attack',
-      'destroy', 'terrible', 'awful', 'worst', 'horrible', 'disgusting'
+      'destroy', 'terrible', 'awful', 'worst', 'horrible', 'disgusting',
+      'insulting', 'rant', 'harsh', 'criticizing', 'negative', 'offensive',
+      'toxic', 'abusive', 'hostile', 'cruel', 'mean', 'nasty', 'vicious',
+      'malicious', 'hateful', 'contempt', 'scorn', 'ridicule', 'mock',
+      'pathetic', 'worthless', 'useless', 'garbage', 'trash', 'crap',
+      'damn', 'hell', 'bastard', 'jerk', 'screw', 'suck'
     ];
 
     const matches = toxicPatterns.filter(pattern => text.includes(pattern)).length;
-    return Math.min(matches * 0.15, 1.0);
+    const toxicityScore = Math.min(matches * 0.12, 1.0); // Adjusted multiplier
+    
+    console.log('[Detection Engine] Toxicity estimation:', {
+      matches,
+      patterns: toxicPatterns.filter(p => text.includes(p)),
+      score: toxicityScore,
+      textPreview: text.substring(0, 150)
+    });
+    
+    return toxicityScore;
   }
 
   /**
