@@ -6,7 +6,7 @@ The ObservAI SDK provides seamless integration with your existing projects to au
 
 ## Features
 
-✨ **Zero Configuration** - Drop-in replacement for `@google/generative-ai`  
+✨ **Zero Configuration** - Drop-in replacement for `@google/genai`  
 📊 **Automatic Tracking** - Every request is tracked with detailed metrics  
 💰 **Cost Analysis** - Real-time cost calculation per request  
 🎯 **Quality Metrics** - Coherence, toxicity, hallucination risk analysis  
@@ -18,11 +18,11 @@ The ObservAI SDK provides seamless integration with your existing projects to au
 ## Installation
 
 ```bash
-npm install @observai/sdk @google/generative-ai
+npm install @observai/sdk @google/genai
 # or
-yarn add @observai/sdk @google/generative-ai
+yarn add @observai/sdk @google/genai
 # or
-pnpm add @observai/sdk @google/generative-ai
+pnpm add @observai/sdk @google/genai
 ```
 
 ## Quick Start
@@ -34,7 +34,7 @@ import { ObservAIClient } from '@observai/sdk';
 
 // Initialize client
 const client = new ObservAIClient({
-  apiKey: process.env.VERTEX_AI_API_KEY,
+  apiKey: process.env.GEMINI_API_KEY,
   userId: 'user-123',
   projectName: 'my-awesome-app'
 });
@@ -61,7 +61,7 @@ console.log('Tracking:', result.tracking);
 
 ```typescript
 const client = new ObservAIClient({
-  apiKey: process.env.VERTEX_AI_API_KEY,
+  apiKey: process.env.GEMINI_API_KEY,
   endpoint: 'https://your-supabase.supabase.co/functions/v1/track-llm',
   userId: 'user-123',
   projectName: 'production-app',
@@ -121,7 +121,7 @@ await client.dispose();
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `apiKey` | string | **required** | Your Vertex AI API key |
+| `apiKey` | string | **required** | Your Gemini AI API key |
 | `endpoint` | string | Production URL | ObservAI ingestion endpoint |
 | `userId` | string | 'anonymous' | User identifier for tracking |
 | `projectName` | string | 'default' | Project name for grouping |
@@ -169,7 +169,7 @@ import { ObservAIClient } from '@observai/sdk';
 
 const app = express();
 const aiClient = new ObservAIClient({
-  apiKey: process.env.VERTEX_AI_API_KEY,
+  apiKey: process.env.GEMINI_API_KEY,
   projectName: 'express-api',
   userId: 'api-server'
 });
@@ -209,7 +209,7 @@ import { ObservAIClient } from '@observai/sdk';
 import { NextResponse } from 'next/server';
 
 const client = new ObservAIClient({
-  apiKey: process.env.VERTEX_AI_API_KEY!,
+  apiKey: process.env.GEMINI_API_KEY!,
   projectName: 'nextjs-app'
 });
 
@@ -236,7 +236,7 @@ import { useState } from 'react';
 import { ObservAIClient } from '@observai/sdk';
 
 const client = new ObservAIClient({
-  apiKey: import.meta.env.VITE_VERTEX_AI_API_KEY,
+  apiKey: import.meta.env.GEMINI_API_KEY,
   projectName: 'react-app',
   userId: 'current-user'
 });
@@ -372,7 +372,7 @@ console.log(category); // 'translation'
 ### 1. Use Environment Variables
 ```typescript
 const client = new ObservAIClient({
-  apiKey: process.env.VERTEX_AI_API_KEY!,
+  apiKey: process.env.GEMINI_API_KEY!,
   endpoint: process.env.OBSERVAI_ENDPOINT,
   userId: process.env.USER_ID
 });
@@ -381,7 +381,7 @@ const client = new ObservAIClient({
 ### 2. Enable Batch Mode for High Traffic
 ```typescript
 const client = new ObservAIClient({
-  apiKey: process.env.VERTEX_AI_API_KEY!,
+  apiKey: process.env.GEMINI_API_KEY!,
   batchMode: {
     enabled: true,
     maxBatchSize: 20,
@@ -442,7 +442,7 @@ process.on('SIGTERM', async () => {
 
 Ensure you have the correct peer dependencies:
 ```bash
-npm install @google/generative-ai@^0.24.0
+npm install @google/genai@^0.24.0
 ```
 
 ## Contributing
@@ -455,7 +455,5 @@ MIT © ObservAI
 
 ## Support
 
-- 📧 Email: support@observai.dev
 - 🐛 Issues: [GitHub Issues](https://github.com/Shafwansafi06/observability-hub/issues)
-- 💬 Discord: [Join our community](https://discord.gg/observai)
-- 📚 Docs: [docs.observai.dev](https://docs.observai.dev)
+- 📚 Docs: [docs.observai.dev](https://observai.vercel.app/docs)
