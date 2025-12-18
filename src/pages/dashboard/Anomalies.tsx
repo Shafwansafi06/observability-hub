@@ -1,10 +1,11 @@
 import { useState, useCallback, useMemo } from "react";
 import { AlertCard } from "@/components/dashboard/AlertCard";
 import { ChartCard } from "@/components/dashboard/ChartCard";
+import { InvestigationModal } from "@/components/dashboard/InvestigationModal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAlerts, useTimeSeriesData, TimeRangeOption } from "@/hooks/use-observability";
-import { observabilityService } from "@/lib/observability-service";
+import { observabilityService, Alert } from "@/lib/observability-service";
 import { TimeRangeSelector } from "@/components/dashboard/TimeRangeSelector";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -30,6 +31,8 @@ const detectionRules = [
 export default function Anomalies() {
   const [timeRange, setTimeRange] = useState<TimeRangeOption>('24h');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [investigatingAlert, setInvestigatingAlert] = useState<Alert | null>(null);
+  const [investigationModalOpen, setInvestigationModalOpen] = useState(false);
   const { toast } = useToast();
   const { alerts, activeCount, acknowledge, resolve, loading } = useAlerts(5000);
   const { data: errorsData, loading: chartLoading } = useTimeSeriesData('errors', timeRange, 30000);
@@ -62,15 +65,43 @@ export default function Anomalies() {
     }));
   }, [alerts]);
 
-  // Chart data with memoization
+  // Chart data with memoization - use alerts data if errors data is empty
   const anomalyTrendData = useMemo(() => {
-    if (!errorsData.length) return [{ name: 'Now', value: 0 }];
+    // If we have errors time series data, use it
+    if (errorsData.length > 0) {
+      return errorsData.map(d => ({
+        name: d.timestamp.toLocaleDateString([], { weekday: 'short', hour: 'numeric' }),
+        value: d.value,
+      }));
+    }
     
-    return errorsData.map(d => ({
-      name: d.timestamp.toLocaleDateString([], { weekday: 'short', hour: 'numeric' }),
-      value: d.value,
-    }));
-  }, [errorsData]);
+    // Otherwise, generate chart data from alerts
+    const now = new Date();
+    const hoursToShow = timeRange === '1h' ? 1 : 24;
+    const buckets: { [key: string]: number } = {};
+    
+    // Create time buckets
+    for (let i = hoursToShow; i >= 0; i--) {
+      const time = new Date(now.getTime() - i * 60 * 60 * 1000);
+      const key = time.toLocaleTimeString([], { hour: 'numeric', hour12: true });
+      buckets[key] = 0;
+    }
+    
+    // Count alerts in each bucket
+    alerts.forEach(alert => {
+      const alertTime = new Date(alert.timestamp);
+      const hoursDiff = (now.getTime() - alertTime.getTime()) / (1000 * 60 * 60);
+      
+      if (hoursDiff <= hoursToShow) {
+        const key = alertTime.toLocaleTimeString([], { hour: 'numeric', hour12: true });
+        if (buckets[key] !== undefined) {
+          buckets[key]++;
+        }
+      }
+    });
+    
+    return Object.entries(buckets).map(([name, value]) => ({ name, value }));
+  }, [errorsData, alerts, timeRange]);
 
   function formatTimeAgo(date: Date): string {
     const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -117,12 +148,20 @@ export default function Anomalies() {
     }
   }, [acknowledge, toast]);
 
-  const handleInvestigate = useCallback(async (alertId: string) => {
+  const handleInvestigate = useCallback((alertId: string) => {
+    const alert = alerts.find(a => a.id === alertId);
+    if (alert) {
+      setInvestigatingAlert(alert);
+      setInvestigationModalOpen(true);
+    }
+  }, [alerts]);
+
+  const handleResolveWithAnalysis = useCallback(async (alertId: string, analysis: string) => {
     try {
       await resolve(alertId);
       toast({
-        title: "Alert Resolved",
-        description: "The alert has been investigated and resolved.",
+        title: "✅ Alert Resolved",
+        description: "The alert has been investigated and resolved with AI analysis.",
       });
     } catch (error) {
       toast({
@@ -130,6 +169,7 @@ export default function Anomalies() {
         description: "Failed to resolve alert.",
         variant: "destructive",
       });
+      throw error;
     }
   }, [resolve, toast]);
 
@@ -340,6 +380,17 @@ export default function Anomalies() {
           </div>
         </div>
       </div>
+
+      {/* Investigation Modal */}
+      <InvestigationModal
+        alert={investigatingAlert}
+        open={investigationModalOpen}
+        onClose={() => {
+          setInvestigationModalOpen(false);
+          setInvestigatingAlert(null);
+        }}
+        onResolve={handleResolveWithAnalysis}
+      />
     </div>
   );
 }

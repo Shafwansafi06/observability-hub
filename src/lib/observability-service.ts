@@ -900,7 +900,7 @@ export async function addAlertDB(alert: Omit<Alert, 'id' | 'timestamp' | 'status
 
     console.log('[addAlertDB] 👤 User authenticated:', user.id);
 
-    const { error } = await supabase.from('alerts').insert({
+    const insertData = {
       user_id: user.id,
       title: alert.title,
       description: alert.description,
@@ -912,7 +912,11 @@ export async function addAlertDB(alert: Omit<Alert, 'id' | 'timestamp' | 'status
       current_value: alert.current_value,
       recommendation: alert.recommendation,
       metadata: alert.metadata,
-    } as any);
+    };
+
+    console.log('[addAlertDB] 📤 Sending to Supabase:', insertData);
+
+    const { error } = await supabase.from('alerts').insert(insertData as any);
 
     if (error) {
       console.error('[addAlertDB] ❌ Failed to add alert to DB:', error);

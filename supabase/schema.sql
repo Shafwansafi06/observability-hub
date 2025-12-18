@@ -98,6 +98,12 @@ CREATE TABLE IF NOT EXISTS public.alerts (
   metric_value NUMERIC,
   threshold_value NUMERIC,
   
+  -- Detection engine columns
+  detection_rule_id TEXT,
+  current_value NUMERIC,
+  recommendation TEXT,
+  metadata JSONB,
+  
   -- Timestamps
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   acknowledged_at TIMESTAMP WITH TIME ZONE,
@@ -107,7 +113,8 @@ CREATE TABLE IF NOT EXISTS public.alerts (
   INDEX idx_alerts_user_id (user_id),
   INDEX idx_alerts_status (status),
   INDEX idx_alerts_severity (severity),
-  INDEX idx_alerts_created_at (created_at)
+  INDEX idx_alerts_created_at (created_at),
+  INDEX idx_alerts_detection_rule_id (detection_rule_id)
 );
 
 -- Enable RLS
