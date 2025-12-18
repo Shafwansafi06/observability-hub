@@ -21,6 +21,7 @@ const client = new ObservAIClient({
   apiKey: apiKey, // may be undefined; ObservAIClient accepts aiClient instead
   aiClient: apiKey ? undefined : mockAIClient,
   endpoint: "https://nztdwsnmttwwjticuphi.supabase.co/functions/v1/track-llm",
+  userEmail: "safishafwan@gmail.com",
   userId: "061ffd2c-5bd2-4a29-a5f2-1a25657d8234",
   projectName: "sdk-test",
   debug: true,

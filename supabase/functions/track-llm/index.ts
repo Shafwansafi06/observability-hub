@@ -9,8 +9,7 @@
  * The ML detector runs every 5 minutes and learns YOUR normal patterns.
  */
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 
 interface TrackedRequest {
   request_id: string;
@@ -53,117 +52,139 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Top-level Supabase REST helper using service role key to avoid bundling
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
+const SUPABASE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
+async function restRequest(method: string, path: string, body?: unknown) {
+  const base = SUPABASE_URL.replace(/\/$/, '');
+  const url = `${base}/rest/v1/${path}`;
+  const headers: Record<string,string> = {
+    'Content-Type': 'application/json',
+    'apikey': SUPABASE_KEY,
+    'Authorization': `Bearer ${SUPABASE_KEY}`,
+    'Prefer': 'return=representation',
+  };
+
+  const finalUrl = method === 'GET' && body ? `${url}?${String(body)}` : url;
+  const res = await fetch(finalUrl, {
+    method,
+    headers,
+    body: method === 'GET' || !body ? undefined : JSON.stringify(body),
+  });
+  const text = await res.text();
+  try { return { ok: res.ok, status: res.status, data: text ? JSON.parse(text) : null }; } catch (e) { return { ok: res.ok, status: res.status, data: text }; }
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', { headers: { ...corsHeaders, 'Access-Control-Allow-Methods': 'POST, OPTIONS' } });
   }
 
   try {
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Validate function secrets
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+      console.error('[track-llm] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+      return new Response(JSON.stringify({ success: false, error: 'Server misconfigured' }), { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+    }
 
     // Parse request body
     const body: RequestBatch = await req.json();
-    
-    if (!body.requests || !Array.isArray(body.requests)) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Invalid request format' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!body || !Array.isArray(body.requests) || body.requests.length === 0) {
+      return new Response(JSON.stringify({ success: false, error: 'Invalid request format' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     console.log(`[track-llm] Processing batch with ${body.requests.length} requests`);
 
-    // Extract user_id from first request or use 'anonymous'
-    const userId = body.requests[0]?.user_id || 'anonymous';
+    // Resolve any provided user_email fields to auth.user ids via REST
+    const emails = new Set<string>();
+    for (const r of body.requests) {
+      if ((r as any).user_email) emails.add(String((r as any).user_email));
+    }
+
+    const emailToId: Record<string, string | null> = {};
+    for (const email of emails) {
+      try {
+        const q = `select=id&email=eq.${encodeURIComponent(email)}`;
+        const res = await restRequest('GET', `auth.users?${q}`);
+        if (res.ok && Array.isArray(res.data) && res.data.length > 0 && res.data[0].id) {
+          emailToId[email] = res.data[0].id;
+        } else {
+          emailToId[email] = null;
+        }
+      } catch (e) {
+        emailToId[email] = null;
+      }
+    }
 
     // Map to database format
-    const dbRequests = body.requests.map(req => ({
-      user_id: req.user_id || userId,
-      model: req.model,
-      prompt: req.prompt,
-      response: req.response,
-      prompt_category: req.prompt_category || 'general',
-      
-      latency_ms: req.latency_ms,
-      tokens_in: req.tokens_in,
-      tokens_out: req.tokens_out,
-      tokens_total: req.tokens_total,
-      cost_usd: req.cost_usd,
-      
-      coherence_score: req.coherence_score,
-      toxicity_score: req.toxicity_score,
-      hallucination_risk: req.hallucination_risk,
-      sentiment_score: req.sentiment_score,
-      
-      temperature: req.temperature,
-      max_tokens: req.max_tokens,
-      top_p: req.top_p,
-      frequency_penalty: 0,
-      presence_penalty: 0,
-      
-      success: req.success,
-      error_message: req.error_message,
-      error_code: req.error_code,
-      retry_count: req.retry_count,
-      
-      request_id: req.request_id,
-      session_id: req.session_id,
-      user_agent: req.user_agent,
-      metadata: req.metadata || {},
-      
-      created_at: req.timestamp || new Date().toISOString(),
-    }));
+    const dbRequests = body.requests.map((req) => {
+      const userId = req.user_id ?? ((req as any).user_email ? emailToId[String((req as any).user_email)] : null) ?? null;
+      return {
+        user_id: userId,
+        model: req.model,
+        prompt: (req.prompt ?? null) ? String(req.prompt).slice(0, 20000) : null,
+        response: (req.response ?? null) ? String(req.response).slice(0, 20000) : null,
+        prompt_category: req.prompt_category ?? 'general',
+        latency_ms: typeof req.latency_ms === 'number' ? req.latency_ms : null,
+        tokens_in: typeof req.tokens_in === 'number' ? req.tokens_in : (typeof req.tokens_total === 'number' ? req.tokens_total : null),
+        tokens_out: typeof req.tokens_out === 'number' ? req.tokens_out : null,
+        tokens_total: typeof req.tokens_total === 'number' ? req.tokens_total : null,
+        cost_usd: typeof req.cost_usd === 'number' ? req.cost_usd : null,
+        coherence_score: typeof req.coherence_score === 'number' ? req.coherence_score : null,
+        toxicity_score: typeof req.toxicity_score === 'number' ? req.toxicity_score : null,
+        hallucination_risk: typeof req.hallucination_risk === 'number' ? req.hallucination_risk : null,
+        sentiment_score: typeof req.sentiment_score === 'number' ? req.sentiment_score : null,
+        temperature: typeof req.temperature === 'number' ? req.temperature : null,
+        max_tokens: typeof req.max_tokens === 'number' ? req.max_tokens : null,
+        top_p: typeof req.top_p === 'number' ? req.top_p : null,
+        frequency_penalty: null,
+        presence_penalty: null,
+        success: typeof req.success === 'boolean' ? req.success : true,
+        error_message: req.error_message ?? null,
+        error_code: req.error_code ?? null,
+        retry_count: typeof req.retry_count === 'number' ? req.retry_count : 0,
+        request_id: req.request_id ?? null,
+        session_id: req.session_id ?? null,
+        user_agent: req.user_agent ?? null,
+        metadata: {
+          ...(req.metadata ?? {}),
+          // preserve any provided user_email so the UI can surface it
+          user_email: (req as any).user_email ?? null,
+        },
+        created_at: req.timestamp ?? new Date().toISOString(),
+      };
+    });
 
-    // Insert into database (batch insert)
-    const { data, error } = await supabase
-      .from('llm_requests')
-      .insert(dbRequests);
+    // Debug: log resolved email->user_id mapping when in function logs
+    if (Object.keys(emailToId).length > 0) {
+      console.log('[track-llm] Resolved emails:', emailToId);
+    }
 
-    if (error) {
-      console.error('[track-llm] Database error:', error);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Database insertion failed',
-          details: error.message 
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Insert llm_requests via REST
+    const insertRes = await restRequest('POST', 'llm_requests', dbRequests);
+    if (!insertRes.ok) {
+      console.error('[track-llm] Database insert error:', insertRes.status, insertRes.data);
+      return new Response(JSON.stringify({ success: false, error: 'Database insertion failed', details: insertRes.data }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Check for anomalies and trigger alerts
-    await checkForAnomalies(supabase, dbRequests);
+    await checkForAnomalies(dbRequests);
 
     console.log(`[track-llm] Successfully tracked ${dbRequests.length} requests`);
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: `Tracked ${dbRequests.length} requests`,
-        batch_id: body.batch_id,
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ success: true, message: `Tracked ${dbRequests.length} requests`, batch_id: body.batch_id ?? null }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error) {
     console.error('[track-llm] Error:', error);
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
-      }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
 
 /**
  * Check for anomalies and create alerts
  */
-async function checkForAnomalies(supabase: any, requests: any[]) {
+async function checkForAnomalies(requests: any[]) {
   try {
     const alerts = [];
 
@@ -240,10 +261,14 @@ async function checkForAnomalies(supabase: any, requests: any[]) {
       }
     }
 
-    // Insert alerts if any
+    // Insert alerts if any (via REST)
     if (alerts.length > 0) {
-      await supabase.from('alerts').insert(alerts);
-      console.log(`[track-llm] Created ${alerts.length} alerts`);
+      const res = await restRequest('POST', 'alerts', alerts);
+      if (!res.ok) {
+        console.error('[track-llm] failed creating alerts:', res.status, res.data);
+      } else {
+        console.log(`[track-llm] Created ${Array.isArray(res.data) ? res.data.length : alerts.length} alerts`);
+      }
     }
   } catch (error) {
     console.error('[track-llm] Error checking anomalies:', error);

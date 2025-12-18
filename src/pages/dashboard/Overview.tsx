@@ -82,6 +82,11 @@ export default function Overview() {
       severity: a.severity as 'critical' | 'warning',
       timestamp: formatTimeAgo(new Date(a.timestamp)),
       source: a.source,
+      detection_rule_id: a.detection_rule_id,
+      threshold_value: a.threshold_value,
+      current_value: a.current_value,
+      recommendation: a.recommendation,
+      metadata: a.metadata,
     }));
 
   const handleRefresh = () => {

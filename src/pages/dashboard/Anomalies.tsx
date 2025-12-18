@@ -54,6 +54,11 @@ export default function Anomalies() {
       timestamp: formatTimeAgo(new Date(a.timestamp)),
       source: a.source,
       status: a.status,
+      detection_rule_id: a.detection_rule_id,
+      threshold_value: a.threshold_value,
+      current_value: a.current_value,
+      recommendation: a.recommendation,
+      metadata: a.metadata,
     }));
   }, [alerts]);
 

@@ -12,6 +12,11 @@ interface Alert {
   severity: AlertSeverity;
   timestamp: string;
   source: string;
+  detection_rule_id?: string;
+  threshold_value?: number;
+  current_value?: number;
+  recommendation?: string;
+  metadata?: Record<string, any>;
 }
 
 interface AlertCardProps {
@@ -121,6 +126,37 @@ export function AlertCard({
               </p>
             </div>
           </div>
+
+          {/* Detection Rule Details */}
+          {alert.detection_rule_id && (
+            <div className="mt-3 p-3 rounded-lg bg-muted/30 border border-border/50 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">Rule ID:</span>
+                <span className="font-mono text-foreground">{alert.detection_rule_id}</span>
+              </div>
+              {alert.threshold_value !== undefined && alert.current_value !== undefined && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground font-medium">Value:</span>
+                  <span className="font-mono">
+                    <span className={cn(
+                      "font-semibold",
+                      alert.severity === "critical" ? "text-destructive" : "text-yellow-500"
+                    )}>
+                      {alert.current_value.toFixed(2)}
+                    </span>
+                    <span className="text-muted-foreground mx-1">/</span>
+                    <span className="text-foreground">{alert.threshold_value}</span>
+                  </span>
+                </div>
+              )}
+              {alert.recommendation && (
+                <div className="pt-2 border-t border-border/50">
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Recommended Action:</p>
+                  <p className="text-xs text-foreground">{alert.recommendation}</p>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex items-center justify-between mt-4">
             <div className="flex items-center gap-1 text-xs text-muted-foreground">

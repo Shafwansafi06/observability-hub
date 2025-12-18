@@ -66,9 +66,31 @@ export default function DetectionDemo() {
       setResponse(aiResponse.text);
 
       // Calculate cost (rough estimate)
-      const cost = (aiResponse.tokens / 1000000) * 0.075; // $0.075 per 1M tokens for Flash
+      const promptTokens = Math.ceil(scenario.prompt.length / 4);
+      const responseTokens = aiResponse.tokens;
+      const MODEL_PRICING: Record<string, { input: number; output: number }> = {
+        'gemini-2.5-flash': { input: 0.075, output: 0.30 },
+        'gemini-2.5-pro': { input: 1.25, output: 5.00 },
+        'gemini-1.5-flash': { input: 0.075, output: 0.30 },
+      };
+      const pricing = MODEL_PRICING[aiResponse.model] || MODEL_PRICING['gemini-2.5-flash'];
+      const cost = ((promptTokens / 1_000_000) * pricing.input) + ((responseTokens / 1_000_000) * pricing.output);
 
-      // Run detection
+      // Track the LLM request to Supabase so it appears in Dashboard
+      const { observabilityService } = await import('@/lib/observability-service');
+      await observabilityService.trackLLMRequest({
+        prompt: scenario.prompt,
+        response: aiResponse.text,
+        model: aiResponse.model,
+        tokens: aiResponse.tokens,
+        latency: latency,
+        success: true,
+        temperature: 0.7,
+        maxTokens: 2048,
+        promptCategory: 'detection-demo',
+      });
+
+      // Run detection and persist anomalies
       const results = await runDetectionAndPersist({
         prompt: scenario.prompt,
         response: aiResponse.text,
@@ -86,7 +108,7 @@ export default function DetectionDemo() {
       if (results.length > 0) {
         toast({
           title: '🚨 Detection Rules Triggered!',
-          description: `${results.length} rule(s) violated. Check Datadog for alerts.`,
+          description: `${results.length} rule(s) violated. Check Dashboard & Anomalies tabs.`,
           variant: 'destructive',
         });
       } else {
