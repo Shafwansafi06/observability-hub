@@ -17,7 +17,7 @@ export default function Index({ theme, setTheme }: IndexProps) {
       
       <main>
         <HeroSectionApple
-          badge="Datadog × Google Cloud Hackathon 2024"
+          badge="Devpost Hackathon 2025"
           title="The future of"
           highlightedTitle="AI Observability"
           description="End-to-end LLM monitoring with deep telemetry, anomaly detection, and automated incident management. Built for the next generation of AI engineers."
