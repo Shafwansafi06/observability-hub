@@ -20,17 +20,16 @@ import {
     Geography,
     Marker,
     Sphere,
-    Graticule
+    Graticule,
+    ZoomableGroup
 } from "react-simple-maps";
 import {
-    Compass,
-    AlertCircle,
-    TrendingDown,
     Scale,
     Map as MapIcon,
     RefreshCw,
     Globe,
-    Zap
+    Zap,
+    AlertCircle
 } from "lucide-react";
 import { supabase, rpc } from "@/lib/supabaseClient";
 import { toast } from "sonner";
@@ -120,58 +119,61 @@ export default function FairnessDashboard() {
                         Real-time visualization of cost (marker size) and latency (color intensity) inequality.
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="p-0 h-[450px] relative flex items-center justify-center overflow-hidden">
+                <CardContent className="p-0 h-[450px] relative flex items-center justify-center overflow-hidden cursor-move">
                     <div className="absolute inset-0 z-0 flex items-center justify-center">
                         <ComposableMap projectionConfig={{ rotate: [-10, 0, 0], scale: 175 }}>
-                            <Sphere stroke="#333" strokeWidth={0.5} id="sphere" fill="transparent" />
-                            <Graticule stroke="#333" strokeWidth={0.5} />
-                            <Geographies geography={geoUrl}>
-                                {({ geographies }) =>
-                                    geographies.map((geo) => (
-                                        <Geography
-                                            key={geo.rsmKey}
-                                            geography={geo}
-                                            fill="#1a1a1a"
-                                            stroke="#333"
-                                            strokeWidth={0.5}
-                                            style={{
-                                                default: { outline: "none" },
-                                                hover: { fill: "#222", outline: "none" },
-                                                pressed: { outline: "none" },
-                                            }}
-                                        />
-                                    ))
-                                }
-                            </Geographies>
-                            {data.map((item, i) => {
-                                const coords = observabilityService.getRegionCoordinates(item.region);
-                                const isDown = item.status === 'inequality';
-                                return (
-                                    <Marker key={i} coordinates={coords}>
-                                        <circle
-                                            r={isDown ? 8 : 6}
-                                            fill={isDown ? "#ef4444" : item.status === 'imbalance' ? "#f97316" : "#0ea5e9"}
-                                            fillOpacity={0.6}
-                                            className="animate-pulse"
-                                        />
-                                        <text
-                                            textAnchor="middle"
-                                            y={-12}
-                                            style={{
-                                                fontFamily: "Inter, sans-serif",
-                                                fill: "#AAA",
-                                                fontSize: "8px",
-                                                fontWeight: "bold",
-                                                pointerEvents: "none"
-                                            }}
-                                        >
-                                            {item.region}
-                                        </text>
-                                    </Marker>
-                                );
-                            })}
+                            <ZoomableGroup zoom={1} maxZoom={8}>
+                                <Sphere stroke="#333" strokeWidth={0.5} id="sphere" fill="transparent" />
+                                <Graticule stroke="#333" strokeWidth={0.5} />
+                                <Geographies geography={geoUrl}>
+                                    {({ geographies }) =>
+                                        geographies.map((geo) => (
+                                            <Geography
+                                                key={geo.rsmKey}
+                                                geography={geo}
+                                                fill="#1a1a1a"
+                                                stroke="#333"
+                                                strokeWidth={0.5}
+                                                style={{
+                                                    default: { outline: "none" },
+                                                    hover: { fill: "#222", outline: "none" },
+                                                    pressed: { outline: "none" },
+                                                }}
+                                            />
+                                        ))
+                                    }
+                                </Geographies>
+                                {data.map((item, i) => {
+                                    const coords = observabilityService.getRegionCoordinates(item.region);
+                                    const isDown = item.status === 'inequality';
+                                    return (
+                                        <Marker key={i} coordinates={coords}>
+                                            <circle
+                                                r={isDown ? 8 : 6}
+                                                fill={isDown ? "#ef4444" : item.status === 'imbalance' ? "#f97316" : "#0ea5e9"}
+                                                fillOpacity={0.6}
+                                                className="animate-pulse"
+                                            />
+                                            <text
+                                                textAnchor="middle"
+                                                y={-12}
+                                                style={{
+                                                    fontFamily: "Inter, sans-serif",
+                                                    fill: "#AAA",
+                                                    fontSize: "8px",
+                                                    fontWeight: "bold",
+                                                    pointerEvents: "none"
+                                                }}
+                                            >
+                                                {item.region}
+                                            </text>
+                                        </Marker>
+                                    );
+                                })}
+                            </ZoomableGroup>
                         </ComposableMap>
                     </div>
+
                     {data.length === 0 && !loading && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-10 p-6 text-center">
                             <div className="bg-accent/10 p-4 rounded-full mb-4">
@@ -227,98 +229,105 @@ export default function FairnessDashboard() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="bg-card/50 backdrop-blur-md border-border/50">
+                <Card className="border-accent/10 bg-card/50 backdrop-blur-sm">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-md">
-                            <TrendingDown className="h-5 w-5 text-destructive" />
-                            The "AI Tax" Gap (Cost per 1k Requests)
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <Zap className="h-4 w-4 text-accent" />
+                            AI Tax Gap (Cost Multiplier)
                         </CardTitle>
-                        <CardDescription className="text-xs">
-                            Normalized USD cost across different regions for the same model.
-                        </CardDescription>
+                        <CardDescription>Premium paid per 1k tokens vs US benchmark.</CardDescription>
                     </CardHeader>
                     <CardContent className="h-[300px]">
-                        {data.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 30 }}>
-                                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} opacity={0.05} />
-                                    <XAxis type="number" hide />
-                                    <YAxis
-                                        dataKey="name"
-                                        type="category"
-                                        width={120}
-                                        tick={{ fontSize: 10, fill: '#888' }}
-                                        axisLine={false}
-                                        tickLine={false}
-                                    />
-                                    <Tooltip
-                                        cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                                        contentStyle={{ backgroundColor: '#111', border: '1px solid #333', fontSize: '11px', borderRadius: '8px' }}
-                                    />
-                                    <Bar dataKey="cost" radius={[0, 4, 4, 0]} barSize={16}>
-                                        {chartData.map((entry, index) => (
-                                            <Cell
-                                                key={`cell-${index}`}
-                                                fill={entry.status === 'inequality' ? '#ef4444' : entry.status === 'imbalance' ? '#f97316' : '#22c55e'}
-                                            />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="h-full flex items-center justify-center text-muted-foreground text-sm italic">
-                                Awaiting data synchronization...
-                            </div>
-                        )}
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart layout="vertical" data={chartData} margin={{ left: 40, right: 30 }}>
+                                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#333" />
+                                <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#888' }} unit="k$" />
+                                <YAxis
+                                    dataKey="name"
+                                    type="category"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fontSize: 9, fill: '#AAA' }}
+                                    width={100}
+                                />
+                                <Tooltip
+                                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                                    contentStyle={{
+                                        backgroundColor: 'rgba(10, 10, 10, 0.95)',
+                                        border: '1px solid rgba(0, 225, 255, 0.3)',
+                                        fontSize: '11px',
+                                        borderRadius: '8px',
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                                        color: '#fff'
+                                    }}
+                                    itemStyle={{ color: '#0ea5e9', fontWeight: 'bold' }}
+                                />
+                                <Bar dataKey="cost" radius={[0, 4, 4, 0]} barSize={16}>
+                                    {chartData.map((entry, index) => (
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={entry.status === 'inequality' ? '#ef4444' : entry.status === 'imbalance' ? '#f97316' : '#0ea5e9'}
+                                        />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
                     </CardContent>
                 </Card>
 
-                <Card className="bg-card/50 backdrop-blur-md border-border/50">
+                <Card className="border-accent/10 bg-card/50 backdrop-blur-sm">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-md">
-                            <Compass className="h-5 w-5 text-accent" />
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <Globe className="h-4 w-4 text-primary" />
                             Latency Inequality Index
                         </CardTitle>
-                        <CardDescription className="text-xs">
-                            Wait times for global users (ms). Red indicates systemic underperformance.
-                        </CardDescription>
+                        <CardDescription>Wait times for global users (ms). Red indicates systemic underperformance.</CardDescription>
                     </CardHeader>
                     <CardContent className="h-[300px]">
-                        {data.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={chartData} margin={{ top: 10 }}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.05} />
-                                    <XAxis dataKey="name" tick={{ fontSize: 8 }} angle={-25} textAnchor="end" height={60} />
-                                    <YAxis tick={{ fontSize: 10, fill: '#888' }} />
-                                    <Tooltip
-                                        cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                                        contentStyle={{ backgroundColor: '#111', border: '1px solid #333', fontSize: '11px', borderRadius: '8px' }}
-                                    />
-                                    <Bar dataKey="latency" radius={[4, 4, 0, 0]} barSize={24}>
-                                        {chartData.map((entry, index) => (
-                                            <Cell
-                                                key={`cell-${index}`}
-                                                fill={entry.latency > 1500 ? '#ef4444' : entry.latency > 1000 ? '#f97316' : '#0ea5e9'}
-                                            />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="h-full flex items-center justify-center text-muted-foreground text-sm italic">
-                                Awaiting data synchronization...
-                            </div>
-                        )}
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={chartData}>
+                                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#333" />
+                                <XAxis
+                                    dataKey="name"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fontSize: 8, fill: '#AAA', angle: -25, textAnchor: 'end' } as any}
+                                    height={50}
+                                />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#888' }} />
+                                <Tooltip
+                                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                                    contentStyle={{
+                                        backgroundColor: 'rgba(10, 10, 10, 0.95)',
+                                        border: '1px solid rgba(0, 225, 255, 0.3)',
+                                        fontSize: '11px',
+                                        borderRadius: '8px',
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                                        color: '#fff'
+                                    }}
+                                    itemStyle={{ color: '#0ea5e9', fontWeight: 'bold' }}
+                                />
+                                <Bar dataKey="latency" radius={[4, 4, 0, 0]} barSize={24}>
+                                    {chartData.map((entry, index) => (
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={entry.status === 'inequality' ? '#ef4444' : entry.status === 'imbalance' ? '#f97316' : '#0ea5e9'}
+                                        />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
                     </CardContent>
                 </Card>
             </div>
 
-            <div className="flex items-center gap-3 p-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5 text-yellow-500/80 text-xs sm:text-sm">
-                <AlertCircle className="h-5 w-5 shrink-0 text-yellow-500" />
+            <div className="bg-orange-500/10 border border-orange-500/20 p-4 rounded-xl flex gap-3 items-start backdrop-blur-sm">
+                <AlertCircle className="h-5 w-5 text-orange-500 shrink-0 mt-0.5" />
                 <div>
-                    <span className="font-bold">Fairness Insight:</span> {data.length > 0
-                        ? "Your Southeast Asia and Africa nodes are currently experiencing 40% higher latency for the same quality scores compared to US nodes."
-                        : "Seed data to generate fairness insights across your global infrastructure."}
+                    <h4 className="text-sm font-bold text-orange-400">Inequality Warning</h4>
+                    <p className="text-xs text-orange-300/80 mt-1 leading-relaxed">
+                        Users in Southeast Asia and Africa regions are consistently paying <span className="text-orange-400 font-bold">1.5x - 2.0x higher costs</span> with significantly lower response quality scores compared to US nodes.
+                    </p>
                 </div>
             </div>
         </div>

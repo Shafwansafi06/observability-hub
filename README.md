@@ -332,6 +332,8 @@ sequenceDiagram
 | 🚨 **Intelligent Alerting** | Hallucination, toxicity, prompt injection detection | Proactive incident management |
 | 💰 **Cost Intelligence** | Per-model cost tracking with budget alerts | Real-time $ optimization |
 | 🛡️ **Security Monitoring** | Data exfiltration, abuse detection, safety guardrails | Enterprise-grade protection |
+| 🌍 **Global Cost Fairness** | Heatmap & disparity indicators for regional AI cost/latency | Detect & mitigate AI tax |
+| 📜 **Cross-Border Audit** | Tamper-proof logs for global compliance (GDPR/EU AI Act) | Real-time governance & export |
 | 📈 **Advanced Analytics** | P50/P95/P99 percentiles, time-series, aggregations | Production-ready insights |
 | 🌙 **Modern UI** | Dark mode, responsive, shadcn/ui components | Beautiful developer experience |
 
@@ -881,7 +883,67 @@ datadog/
 
 ---
 
-## 🏗 Architecture
+## � Global Cost Fairness & Audit Trail
+
+### **1. Global Cost Fairness Dashboard**
+ObservAI Hub exposes the "AI Tax" — the hidden inequality where different regions pay more for the same AI quality.
+
+```mermaid
+graph TD
+    subgraph "Data Sources"
+        A[Audit Logs] --> B[Regional Stats]
+        C[Cost APIs] --> B
+    end
+    
+    subgraph "Fairness Engine"
+        B --> D{Fairness Calculator}
+        D --> E[Cost Disparity Index]
+        D --> F[Latency Imbalance]
+        D --> G[Quality Variance]
+    end
+    
+    subgraph "Visualization"
+        E --> H[World Heatmap]
+        F --> I[Inequality Charts]
+        G --> J[Regional Insights]
+    end
+    
+    style D fill:#6366f1,color:#fff
+    style H fill:#22c55e,color:#fff
+```
+
+**Key Metrics Tracked:**
+- **AI Tax Gap**: The percentage premium paid per 1k tokens vs a US-based benchmark.
+- **Latency Inequality**: Regional deviations in model response times.
+- **Fairness Score**: A composite 0-100 index measuring regional parity.
+
+### **2. Cross-Border AI Audit Trail**
+A central, immutable repository for tracking every GenAI interaction across global jurisdictions.
+
+```mermaid
+sequenceDiagram
+    participant App as External Application
+    participant SDK as ObservAI SDK
+    participant Audit as Audit Table
+    participant Sec as Security Engine
+    
+    App->>SDK: LLM Request
+    SDK->>Audit: Create Entry (Pending)
+    SDK->>Sec: Analyze for Hallucination/Toxicity
+    Sec-->>Audit: Update Scores & Status
+    Audit->>Audit: Generate Prompt/Response Hash
+    Note right of Audit: Immutable Record Created
+    App-->>Audit: Export PDF/JSON for Compliance
+```
+
+**Compliance Support:**
+- ✅ **EU AI Act**: Tracking high-risk AI decisions and quality scores.
+- ✅ **GDPR**: User-level data isolation and regional tracking.
+- ✅ **Security**: Cryptographic hashing of prompts and responses to ensure data integrity.
+
+---
+
+## �🏗 Architecture
 
 ### System Overview
 
