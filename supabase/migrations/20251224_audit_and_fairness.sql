@@ -98,4 +98,10 @@ BEGIN
         );
     END LOOP;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 4. Grant Permissions
+GRANT EXECUTE ON FUNCTION public.generate_mock_audit_data(UUID) TO authenticated;
+GRANT ALL ON public.audit_logs TO authenticated;
+GRANT ALL ON public.audit_logs TO postgres;
+GRANT ALL ON public.audit_logs TO service_role;

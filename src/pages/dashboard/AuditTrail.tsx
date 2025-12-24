@@ -20,7 +20,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, FileJson, FileText, Shield, Globe, Languages, RefreshCw, AlertTriangle, CheckCircle, Ban } from "lucide-react";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 import { supabase, rpc } from "@/lib/supabaseClient";
 
 export default function AuditTrail() {
@@ -72,7 +72,7 @@ export default function AuditTrail() {
             `${log.cost_usd.toFixed(4)}`
         ]);
 
-        (doc as any).autoTable({
+        autoTable(doc, {
             head: [['Timestamp', 'Region', 'Lang', 'Model', 'Status', 'Cost (USD)']],
             body: tableData,
             startY: 30,

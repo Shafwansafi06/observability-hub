@@ -120,9 +120,9 @@ export default function FairnessDashboard() {
                         Real-time visualization of cost (marker size) and latency (color intensity) inequality.
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="p-0 h-[450px] relative">
-                    <div className="absolute inset-0 z-0">
-                        <ComposableMap projectionConfig={{ rotate: [-10, 0, 0], scale: 147 }}>
+                <CardContent className="p-0 h-[450px] relative flex items-center justify-center overflow-hidden">
+                    <div className="absolute inset-0 z-0 flex items-center justify-center">
+                        <ComposableMap projectionConfig={{ rotate: [-10, 0, 0], scale: 175 }}>
                             <Sphere stroke="#333" strokeWidth={0.5} id="sphere" fill="transparent" />
                             <Graticule stroke="#333" strokeWidth={0.5} />
                             <Geographies geography={geoUrl}>

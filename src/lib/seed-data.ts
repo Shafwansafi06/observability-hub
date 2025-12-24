@@ -11,23 +11,23 @@ import { supabase } from './supabaseClient';
 export async function seedLLMRequests(count: number = 50) {
   const models = ['gemini-2.0-flash', 'gemini-2.5-pro', 'gemini-2.5-flash'];
   const categories = ['general', 'summarization', 'code_generation', 'translation', 'explanation'];
-  
+
   const requests = [];
   const now = new Date();
-  
+
   for (let i = 0; i < count; i++) {
     const hoursAgo = Math.floor(Math.random() * 24);
     const timestamp = new Date(now.getTime() - hoursAgo * 3600000);
-    
+
     const success = Math.random() > 0.05; // 95% success rate
-    const latency = success 
-      ? Math.floor(200 + Math.random() * 800) 
+    const latency = success
+      ? Math.floor(200 + Math.random() * 800)
       : Math.floor(3000 + Math.random() * 7000);
-    
+
     const tokens_in = Math.floor(50 + Math.random() * 500);
     const tokens_out = success ? Math.floor(100 + Math.random() * 900) : 0;
     const tokens_total = tokens_in + tokens_out;
-    
+
     requests.push({
       model: models[Math.floor(Math.random() * models.length)],
       prompt: `Demo prompt ${i + 1}`,
@@ -55,7 +55,7 @@ export async function seedLLMRequests(count: number = 50) {
       updated_at: timestamp.toISOString(),
     });
   }
-  
+
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -65,16 +65,16 @@ export async function seedLLMRequests(count: number = 50) {
 
     // Add user_id to all requests
     const requestsWithUser = requests.map(req => ({ ...req, user_id: user.id }));
-    
+
     const { data, error } = await (supabase
       .from('llm_requests') as any)
       .insert(requestsWithUser);
-    
+
     if (error) {
       console.error('Error seeding LLM requests:', error);
       return { success: false, error };
     }
-    
+
     console.log(`✅ Successfully seeded ${count} LLM requests`);
     return { success: true, count };
   } catch (error) {
@@ -137,17 +137,17 @@ export async function seedAlerts(count: number = 10) {
       source: 'Quality Analyzer',
     },
   ];
-  
+
   const statuses: Array<'active' | 'acknowledged' | 'resolved'> = ['active', 'active', 'active', 'acknowledged', 'resolved'];
   const alerts = [];
   const now = new Date();
-  
+
   for (let i = 0; i < count; i++) {
     const template = alertTemplates[i % alertTemplates.length];
     const hoursAgo = Math.floor(Math.random() * 48);
     const timestamp = new Date(now.getTime() - hoursAgo * 3600000);
     const status = statuses[Math.floor(Math.random() * statuses.length)];
-    
+
     alerts.push({
       ...template,
       status,
@@ -157,7 +157,7 @@ export async function seedAlerts(count: number = 10) {
       resolved_at: status === 'resolved' ? new Date(timestamp.getTime() + 3600000).toISOString() : null,
     });
   }
-  
+
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -166,16 +166,16 @@ export async function seedAlerts(count: number = 10) {
     }
 
     const alertsWithUser = alerts.map(alert => ({ ...alert, user_id: user.id }));
-    
+
     const { data, error } = await (supabase
       .from('alerts') as any)
       .insert(alertsWithUser);
-    
+
     if (error) {
       console.error('Error seeding alerts:', error);
       return { success: false, error };
     }
-    
+
     console.log(`✅ Successfully seeded ${count} alerts`);
     return { success: true, count };
   } catch (error) {
@@ -202,14 +202,14 @@ export async function seedLogs(count: number = 100) {
     'Batch processing complete',
     'Health check passed',
   ];
-  
+
   const logs = [];
   const now = new Date();
-  
+
   for (let i = 0; i < count; i++) {
     const minutesAgo = Math.floor(Math.random() * 1440); // Last 24 hours
     const timestamp = new Date(now.getTime() - minutesAgo * 60000);
-    
+
     logs.push({
       level: levels[Math.floor(Math.random() * levels.length)],
       service: services[Math.floor(Math.random() * services.length)],
@@ -221,7 +221,7 @@ export async function seedLogs(count: number = 100) {
       created_at: timestamp.toISOString(),
     });
   }
-  
+
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -230,16 +230,16 @@ export async function seedLogs(count: number = 100) {
     }
 
     const logsWithUser = logs.map(log => ({ ...log, user_id: user.id }));
-    
+
     const { data, error } = await (supabase
       .from('logs') as any)
       .insert(logsWithUser);
-    
+
     if (error) {
       console.error('Error seeding logs:', error);
       return { success: false, error };
     }
-    
+
     console.log(`✅ Successfully seeded ${count} logs`);
     return { success: true, count };
   } catch (error) {
@@ -249,29 +249,92 @@ export async function seedLogs(count: number = 100) {
 }
 
 /**
+ * Generate demo audit logs for Fairness Dashboard
+ */
+export async function seedAuditLogs(count: number = 50) {
+  const regions = ['us-east-1', 'eu-central-1', 'ap-southeast-1', 'sa-east-1', 'af-south-1'];
+  const langs = ['en', 'de', 'ja', 'pt', 'zu'];
+  const models = ['gpt-4o', 'gemini-1.5-pro', 'claude-3-5-sonnet'];
+
+  const logs = [];
+  const now = new Date();
+
+  for (let i = 0; i < count; i++) {
+    const hoursAgo = Math.floor(Math.random() * 24);
+    const timestamp = new Date(now.getTime() - hoursAgo * 3600000);
+    const region = regions[Math.floor(Math.random() * regions.length)];
+
+    // Bias logic for Fairness Dashboard
+    const costMult = (region === 'af-south-1' || region === 'ap-southeast-1') ? 1.5 + Math.random() : 1.0;
+    const latMult = (region === 'af-south-1' || region === 'ap-southeast-1') ? 2.0 + Math.random() : 1.0;
+
+    logs.push({
+      request_id: crypto.randomUUID(),
+      timestamp: timestamp.toISOString(),
+      user_region: region,
+      language: langs[Math.floor(Math.random() * langs.length)],
+      model: models[Math.floor(Math.random() * models.length)],
+      prompt_hash: Math.random().toString(36).substring(7),
+      response_hash: Math.random().toString(36).substring(7),
+      hallucination_risk: Math.random(),
+      toxicity_score: Math.random(),
+      cost_usd: (0.01 + (Math.random() * 0.05)) * costMult,
+      latency_ms: (200 + (Math.random() * 800)) * latMult,
+      decision_status: Math.random() > 0.9 ? 'blocked' : Math.random() > 0.8 ? 'flagged' : 'safe',
+      metadata: {},
+      created_at: timestamp.toISOString()
+    });
+  }
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Not authenticated' };
+
+    const logsWithUser = logs.map(log => ({ ...log, user_id: user.id }));
+
+    const { error } = await (supabase
+      .from('audit_logs') as any)
+      .insert(logsWithUser);
+
+    if (error) {
+      console.error('Error seeding audit logs:', error);
+      return { success: false, error };
+    }
+
+    console.log(`✅ Successfully seeded ${count} audit logs`);
+    return { success: true, count };
+  } catch (error) {
+    console.error('Exception seeding audit logs:', error);
+    return { success: false, error };
+  }
+}
+
+/**
  * Seed all data types
  */
 export async function seedAllData() {
   console.log('🌱 Starting data seeding...');
-  
+
   const results = {
     llmRequests: await seedLLMRequests(50),
     alerts: await seedAlerts(10),
     logs: await seedLogs(100),
+    auditLogs: await seedAuditLogs(50),
   };
-  
+
   const allSuccess = Object.values(results).every(r => r.success);
-  
+
   if (allSuccess) {
     console.log('✅ All data seeded successfully!');
     console.log('📊 Summary:');
     console.log(`  - LLM Requests: ${results.llmRequests.count}`);
     console.log(`  - Alerts: ${results.alerts.count}`);
     console.log(`  - Logs: ${results.logs.count}`);
+    console.log(`  - Audit Logs: ${results.auditLogs.count}`);
   } else {
     console.error('❌ Some seed operations failed');
   }
-  
+
   return results;
 }
 
@@ -287,11 +350,11 @@ export async function clearDemoData() {
     }
 
     console.log('🗑️ Clearing demo data...');
-    
+
     await (supabase.from('llm_requests') as any).delete().eq('user_id', user.id);
     await (supabase.from('alerts') as any).delete().eq('user_id', user.id);
     await (supabase.from('logs') as any).delete().eq('user_id', user.id);
-    
+
     console.log('✅ Demo data cleared successfully');
     return { success: true };
   } catch (error) {
@@ -307,6 +370,7 @@ if (typeof window !== 'undefined') {
     seedLLMRequests,
     seedAlerts,
     seedLogs,
+    seedAuditLogs,
     clearDemoData,
   };
   console.log('💡 Seed functions available via window.seedData');
