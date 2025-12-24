@@ -1294,6 +1294,23 @@ export const observabilityService = {
       return [];
     }
   },
+
+  /**
+   * Helper to get coordinates for a region name
+   */
+  getRegionCoordinates: (region: string): [number, number] => {
+    const coords: Record<string, [number, number]> = {
+      'us-east-1': [-77.0369, 38.9072],
+      'us-west-2': [-122.3321, 47.6062],
+      'eu-central-1': [8.6821, 50.1109],
+      'eu-west-1': [-6.2603, 53.3498],
+      'ap-southeast-1': [103.8198, 1.3521],
+      'ap-northeast-1': [139.6503, 35.6762],
+      'sa-east-1': [-46.6333, -23.5505],
+      'af-south-1': [18.4241, -33.9249],
+    };
+    return coords[region] || [0, 0];
+  },
 };
 
 export default observabilityService;
