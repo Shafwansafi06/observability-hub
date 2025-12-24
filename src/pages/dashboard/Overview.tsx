@@ -19,6 +19,8 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  Shield,
+  Scale,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Overview() {
   const [timeRange, setTimeRange] = useState<TimeRangeOption>('1h');
-  
+
   const { metrics, loading: metricsLoading } = useMetricsSummary(5000, timeRange);
   const { metrics: llmMetrics } = useLLMMetrics(5000, timeRange);
   const { data: requestsData } = useTimeSeriesData('requests', timeRange, 10000);
@@ -50,25 +52,25 @@ export default function Overview() {
   }
 
   // Transform time series for charts
-  const requestsChartData = requestsData.length > 0 
+  const requestsChartData = requestsData.length > 0
     ? requestsData.map((d) => ({
-        name: d.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        value: d.value,
-      }))
+      name: d.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      value: d.value,
+    }))
     : [{ name: 'Now', value: 0 }];
 
   const latencyChartData = latencyData.length > 0
     ? latencyData.map((d) => ({
-        name: d.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        value: Math.round(d.value),
-      }))
+      name: d.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      value: Math.round(d.value),
+    }))
     : [{ name: 'Now', value: 0 }];
 
   const tokensChartData = tokensData.length > 0
     ? tokensData.map((d) => ({
-        name: d.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        value: d.value,
-      }))
+      name: d.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      value: d.value,
+    }))
     : [{ name: 'Now', value: 0 }];
 
   // Transform alerts for AlertCard component
@@ -113,7 +115,7 @@ export default function Overview() {
       </div>
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <MetricCard
           title="Total Requests"
           value={metrics.totalRequests > 0 ? metrics.totalRequests.toString() : "—"}
@@ -146,6 +148,30 @@ export default function Overview() {
           icon={AlertTriangle}
           variant={activeCount > 0 ? "warning" : "default"}
         />
+        <Card className="cursor-pointer hover:bg-muted/50 transition-colors border-primary/20" onClick={() => window.location.href = "/dashboard/audit-trail"}>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium">Compliance Audit</CardTitle>
+            <Shield className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">Audit Trail</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Cryptographic governance ledger
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="cursor-pointer hover:bg-muted/50 transition-colors border-accent/20" onClick={() => window.location.href = "/dashboard/fairness"}>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium">Fairness Index</CardTitle>
+            <Scale className="h-4 w-4 text-accent" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">Global Fairness</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Cross-border cost & latency analysis
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Service Health */}
@@ -178,7 +204,7 @@ export default function Overview() {
                 <Badge
                   variant={
                     service.status === 'operational' ? 'default' :
-                    service.status === 'degraded' ? 'secondary' : 'destructive'
+                      service.status === 'degraded' ? 'secondary' : 'destructive'
                   }
                 >
                   {service.status}
