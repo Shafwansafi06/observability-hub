@@ -19,6 +19,7 @@ import {
   Brain,
   ScrollText,
   AlertTriangle,
+  Shield,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -30,6 +31,7 @@ import {
   LogOut,
   Menu,
   X,
+  Scale,
 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -43,6 +45,8 @@ const sidebarLinks = [
   { href: "/dashboard/llm-metrics", label: "LLM Metrics", icon: Brain },
   { href: "/dashboard/log-stream", label: "Log Stream", icon: ScrollText },
   { href: "/dashboard/anomalies", label: "Anomalies", icon: AlertTriangle },
+  { href: "/dashboard/audit-trail", label: "Audit Trail", icon: Shield },
+  { href: "/dashboard/fairness", label: "Fairness Index", icon: Scale },
   { href: "/dashboard/detection-demo", label: "Detection Demo", icon: Activity },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];

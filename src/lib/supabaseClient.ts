@@ -168,32 +168,32 @@ export const db = {
   // Organizations
   organizations: () => supabase.from('organizations'),
   organizationMembers: () => supabase.from('organization_members'),
-  
+
   // Users
   userProfiles: () => supabase.from('user_profiles'),
-  
+
   // Projects
   projects: () => supabase.from('projects'),
-  
+
   // API Keys
   apiKeys: () => supabase.from('api_keys'),
-  
+
   // Audit
   auditLogs: () => supabase.from('audit_logs'),
-  
+
   // Metrics
   metricDefinitions: () => supabase.from('metric_definitions'),
   metrics: () => supabase.from('metrics'),
   metricsAggregated: () => supabase.from('metrics_aggregated'),
   llmMetrics: () => supabase.from('llm_metrics'),
-  
+
   // Logs
   logs: () => supabase.from('logs'),
   traces: () => supabase.from('traces'),
   spans: () => supabase.from('spans'),
   logPatterns: () => supabase.from('log_patterns'),
   savedSearches: () => supabase.from('saved_searches'),
-  
+
   // Alerts
   alertRules: () => supabase.from('alert_rules'),
   alerts: () => supabase.from('alerts'),
@@ -211,7 +211,7 @@ export const db = {
 export const rpc = {
   getDashboardOverview: (args: { p_org_id: string; p_project_id?: string; p_hours?: number }) =>
     supabase.rpc('get_dashboard_overview', args as never),
-  
+
   getMetricStats: (args: {
     p_org_id: string;
     p_project_id: string;
@@ -220,17 +220,17 @@ export const rpc = {
     p_end_time: string;
     p_environment?: string;
   }) => supabase.rpc('get_metric_stats', args as never),
-  
+
   getLLMMetricsSummary: (args: {
     p_org_id: string;
     p_project_id: string;
     p_start_time: string;
     p_end_time: string;
   }) => supabase.rpc('get_llm_metrics_summary', args as never),
-  
+
   getAlertsSummary: (args: { p_org_id: string }) =>
     supabase.rpc('get_alerts_summary', args as never),
-  
+
   searchLogs: (args: {
     p_org_id: string;
     p_project_id: string;
@@ -243,7 +243,7 @@ export const rpc = {
     p_limit?: number;
     p_offset?: number;
   }) => supabase.rpc('search_logs', args as never),
-  
+
   getTimeSeries: (args: {
     p_org_id: string;
     p_project_id: string;
@@ -252,19 +252,22 @@ export const rpc = {
     p_end_time: string;
     p_granularity?: string;
   }) => supabase.rpc('get_time_series', args as never),
-  
+
   fireAlert: (args: { p_rule_id: string; p_current_value: number; p_labels?: Record<string, string> }) =>
     supabase.rpc('fire_alert', args as never),
-  
+
   resolveAlert: (args: {
     p_alert_id: string;
     p_resolved_by?: string;
     p_resolution_type?: string;
     p_resolution_note?: string;
   }) => supabase.rpc('resolve_alert', args as never),
-  
+
   acknowledgeAlert: (args: { p_alert_id: string; p_acknowledged_by: string }) =>
     supabase.rpc('acknowledge_alert', args as never),
+
+  generateMockAuditData: (args: { target_user_id: string }) =>
+    supabase.rpc('generate_mock_audit_data', args as never),
 };
 
 /**
@@ -286,7 +289,7 @@ export const realtime = {
       )
       .subscribe();
   },
-  
+
   subscribeToLogs: (projectId: string, callback: (payload: unknown) => void) => {
     return supabase
       .channel(`logs:${projectId}`)
@@ -302,7 +305,7 @@ export const realtime = {
       )
       .subscribe();
   },
-  
+
   subscribeToMetrics: (projectId: string, callback: (payload: unknown) => void) => {
     return supabase
       .channel(`metrics:${projectId}`)

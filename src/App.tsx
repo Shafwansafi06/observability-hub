@@ -20,6 +20,8 @@ import Anomalies from "./pages/dashboard/Anomalies";
 import DetectionDemo from "./pages/dashboard/DetectionDemo";
 import DatadogVerification from "./pages/dashboard/DatadogVerification";
 import Settings from "./pages/dashboard/Settings";
+import AuditTrail from "./pages/dashboard/AuditTrail";
+import FairnessDashboard from "./pages/dashboard/FairnessDashboard";
 
 const queryClient = new QueryClient();
 
@@ -46,7 +48,7 @@ const App = () => {
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<SignUp />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
-              
+
               {/* Protected Dashboard Routes */}
               <Route
                 path="/dashboard"
@@ -62,6 +64,8 @@ const App = () => {
                 <Route path="anomalies" element={<Anomalies />} />
                 <Route path="detection-demo" element={<DetectionDemo />} />
                 <Route path="datadog-verify" element={<DatadogVerification />} />
+                <Route path="audit-trail" element={<AuditTrail />} />
+                <Route path="fairness" element={<FairnessDashboard />} />
                 <Route path="settings" element={<Settings theme={theme} setTheme={setTheme} />} />
               </Route>
 

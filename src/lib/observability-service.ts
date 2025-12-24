@@ -6,11 +6,11 @@
 import { supabase } from './supabaseClient';
 import { datadogRum } from '@datadog/browser-rum';
 import { vertexAI } from './vertex-ai/client';
-import { 
-  trackLLMRequestAPM, 
+import {
+  trackLLMRequestAPM,
   trackSupabaseOperation,
   trackSecurityEvent,
-  trackMLQualityMetrics 
+  trackMLQualityMetrics
 } from './datadog-apm';
 
 // Types for observability data
@@ -72,6 +72,33 @@ export interface LLMMetrics {
   }>;
 }
 
+export interface AuditLog {
+  id: string;
+  request_id: string;
+  timestamp: Date;
+  user_region: string;
+  language: string;
+  model: string;
+  prompt_hash: string;
+  response_hash: string;
+  hallucination_risk: number;
+  toxicity_score: number;
+  cost_usd: number;
+  latency_ms: number;
+  decision_status: 'safe' | 'flagged' | 'blocked';
+}
+
+export interface FairnessData {
+  region: string;
+  language: string;
+  avgCost: number;
+  avgLatency: number;
+  avgQuality: number;
+  requestCount: number;
+  fairnessScore: number;
+  status: 'fair' | 'imbalance' | 'inequality';
+}
+
 // In-memory storage for real-time metrics
 let metricsStore: {
   requests: Array<{ timestamp: number; latency: number; tokens: number; success: boolean; model: string }>;
@@ -125,15 +152,15 @@ function generateSampleData() {
   const now = Date.now();
   const oneHourAgo = now - 60 * 60 * 1000;
   const models = ['gemini-2.5-flash', 'gemini-2.5-pro'];
-  
+
   // Generate 20-30 sample requests over the last hour
   const numSamples = 20 + Math.floor(Math.random() * 10);
-  
+
   for (let i = 0; i < numSamples; i++) {
     const timestamp = oneHourAgo + (i / numSamples) * (now - oneHourAgo);
     const model = models[Math.floor(Math.random() * models.length)];
     const success = Math.random() > 0.1; // 90% success rate
-    
+
     metricsStore.requests.push({
       timestamp,
       latency: 200 + Math.random() * 800, // 200-1000ms
@@ -142,7 +169,7 @@ function generateSampleData() {
       model,
     });
   }
-  
+
   // Add a sample alert
   addAlert({
     title: 'High LLM Error Rate',
@@ -150,7 +177,7 @@ function generateSampleData() {
     severity: 'warning',
     source: 'llm-service',
   });
-  
+
   console.log(`📊 Generated ${numSamples} sample data points for demonstration`);
 }
 
@@ -193,7 +220,7 @@ export async function trackLLMRequest(data: {
     success: data.success,
     model: data.model,
   };
-  
+
   metricsStore.requests.push(entry);
 
   // Keep only last 24 hours of data in memory
@@ -204,7 +231,7 @@ export async function trackLLMRequest(data: {
   const promptLength = data.prompt?.length || 0;
   const tokens_in = Math.ceil(promptLength / 4);
   const tokens_out = data.tokens;
-  
+
   // Simple quality heuristics (in production, use real ML models)
   const toxicityScore = detectToxicity(data.response || '');
   const coherenceScore = calculateCoherence(data.response || '');
@@ -265,7 +292,7 @@ export async function trackLLMRequest(data: {
         'gemini-2.5-flash': { input: 0.075, output: 0.30 },
         'gemini-2.5-pro': { input: 1.25, output: 5.00 },
       };
-      
+
       const pricing = MODEL_PRICING[data.model] || MODEL_PRICING['gemini-2.5-flash'];
       const cost = ((tokens_in / 1_000_000) * pricing.input) + ((tokens_out / 1_000_000) * pricing.output);
 
@@ -315,30 +342,30 @@ function calculateCoherence(text: string): number {
 function estimateHallucinationRisk(prompt: string, response: string): number {
   // Simplified hallucination detection (use factuality model in production)
   if (!response || !prompt) return 0;
-  
+
   // Check for specific factual claims
   const factuallyCriticalPhrases = ['according to', 'studies show', 'data indicates', 'research proves'];
   const hasClaims = factuallyCriticalPhrases.some(phrase => response.toLowerCase().includes(phrase));
-  
+
   // Check response length vs prompt
   const lengthRatio = response.length / Math.max(prompt.length, 1);
-  
+
   // Higher risk if making claims without context or extreme length ratio
   if (hasClaims && lengthRatio > 10) return 0.7;
   if (hasClaims) return 0.4;
-  
+
   return 0.1;
 }
 
 function categorizePrompt(prompt: string): string {
   const promptLower = prompt.toLowerCase();
-  
+
   if (promptLower.includes('summarize') || promptLower.includes('summary')) return 'summarization';
   if (promptLower.includes('translate')) return 'translation';
   if (promptLower.includes('code') || promptLower.includes('function')) return 'code_generation';
   if (promptLower.includes('explain') || promptLower.includes('what is')) return 'explanation';
   if (promptLower.includes('write') || promptLower.includes('create')) return 'content_creation';
-  
+
   return 'general';
 }
 
@@ -351,7 +378,7 @@ export function addLog(log: Omit<LogEntry, 'id' | 'timestamp'>) {
     timestamp: new Date(),
     ...log,
   };
-  
+
   metricsStore.logs.push(entry);
 
   // Keep only last 500 logs
@@ -370,14 +397,14 @@ export function addAlert(alert: Omit<Alert, 'id' | 'timestamp' | 'status'>) {
     status: 'active',
     ...alert,
   };
-  
+
   console.log('[addAlert] 💾 Adding alert to in-memory store:', {
     id: entry.id,
     title: entry.title,
     severity: entry.severity,
     detection_rule_id: alert.detection_rule_id,
   });
-  
+
   metricsStore.alerts.push(entry);
 
   console.log(`[addAlert] ✅ Alert added. Total alerts in memory: ${metricsStore.alerts.length}`);
@@ -394,20 +421,20 @@ export function addAlert(alert: Omit<Alert, 'id' | 'timestamp' | 'status'>) {
 export function getMetricsSummary(): MetricsSummary {
   const now = Date.now();
   const oneHourAgo = now - 60 * 60 * 1000;
-  
+
   const recentRequests = metricsStore.requests.filter(r => r.timestamp > oneHourAgo);
   const totalRequests = recentRequests.length;
   const successfulRequests = recentRequests.filter(r => r.success).length;
   const failedRequests = totalRequests - successfulRequests;
-  
+
   const avgLatency = totalRequests > 0
     ? recentRequests.reduce((sum, r) => sum + r.latency, 0) / totalRequests
     : 0;
-    
+
   const tokensUsed = recentRequests.reduce((sum, r) => sum + r.tokens, 0);
-  
+
   const activeAlerts = metricsStore.alerts.filter(a => a.status === 'active').length;
-  
+
   return {
     totalRequests,
     avgLatency: Math.round(avgLatency),
@@ -424,12 +451,12 @@ export function getMetricsSummary(): MetricsSummary {
 export function getLLMMetrics(): LLMMetrics {
   const now = Date.now();
   const oneHourAgo = now - 60 * 60 * 1000;
-  
+
   const recentRequests = metricsStore.requests.filter(r => r.timestamp > oneHourAgo);
   const totalRequests = recentRequests.length;
   const successfulRequests = recentRequests.filter(r => r.success).length;
   const failedRequests = totalRequests - successfulRequests;
-  
+
   // Calculate latencies
   const latencies = recentRequests.map(r => r.latency).sort((a, b) => a - b);
   const avgLatency = totalRequests > 0
@@ -441,7 +468,7 @@ export function getLLMMetrics(): LLMMetrics {
   const p99Latency = latencies.length > 0
     ? latencies[Math.floor(latencies.length * 0.99)] || 0
     : 0;
-    
+
   const tokensUsed = recentRequests.reduce((sum, r) => sum + r.tokens, 0);
   const durationSeconds = Math.max(1, (now - oneHourAgo) / 1000);
   const tokensPerSecond = tokensUsed / durationSeconds;
@@ -525,29 +552,29 @@ export function getTimeSeriesData(
   duration: '1h' | '6h' | '24h' = '1h'
 ): Array<{ timestamp: Date; value: number }> {
   const now = Date.now();
-  const durationMs = duration === '1h' ? 60 * 60 * 1000 
-    : duration === '6h' ? 6 * 60 * 60 * 1000 
-    : 24 * 60 * 60 * 1000;
-  
+  const durationMs = duration === '1h' ? 60 * 60 * 1000
+    : duration === '6h' ? 6 * 60 * 60 * 1000
+      : 24 * 60 * 60 * 1000;
+
   const startTime = now - durationMs;
   const bucketCount = duration === '1h' ? 60 : duration === '6h' ? 72 : 96;
   const bucketSize = durationMs / bucketCount;
-  
+
   const buckets: Map<number, number[]> = new Map();
-  
+
   // Initialize buckets
   for (let i = 0; i < bucketCount; i++) {
     const bucketStart = startTime + i * bucketSize;
     buckets.set(bucketStart, []);
   }
-  
+
   // Fill buckets with data
   const relevantRequests = metricsStore.requests.filter(r => r.timestamp > startTime);
-  
+
   for (const req of relevantRequests) {
     const bucketStart = Math.floor((req.timestamp - startTime) / bucketSize) * bucketSize + startTime;
     const bucket = buckets.get(bucketStart);
-    
+
     if (bucket) {
       switch (metric) {
         case 'requests':
@@ -565,7 +592,7 @@ export function getTimeSeriesData(
       }
     }
   }
-  
+
   // Calculate values
   return Array.from(buckets.entries()).map(([timestamp, values]) => {
     let value: number;
@@ -585,7 +612,7 @@ export function getTimeSeriesData(
       default:
         value = 0;
     }
-    
+
     return { timestamp: new Date(timestamp), value };
   });
 }
@@ -595,7 +622,7 @@ export function getTimeSeriesData(
  */
 export async function checkServiceHealth(): Promise<ServiceHealth[]> {
   const services: ServiceHealth[] = [];
-  
+
   // Check Supabase
   const supabaseStart = Date.now();
   try {
@@ -623,7 +650,7 @@ export async function checkServiceHealth(): Promise<ServiceHealth[]> {
   const vertexErrorRate = vertexMetrics.totalRequests > 0
     ? (vertexMetrics.failedRequests / vertexMetrics.totalRequests) * 100
     : 0;
-  
+
   services.push({
     name: 'Vertex AI (Gemini)',
     status: vertexErrorRate > 50 ? 'down' : vertexErrorRate > 10 ? 'degraded' : 'operational',
@@ -672,7 +699,7 @@ export async function getMetricsSummaryFromDB(timeRange: TimeRange = '1h'): Prom
     }
 
     const { data, error } = await query;
-    
+
     if (error || !data) {
       console.error('Failed to fetch metrics:', error);
       return getMetricsSummary();
@@ -730,7 +757,7 @@ export async function getLLMMetricsFromDB(timeRange: TimeRange = '1h'): Promise<
     }
 
     const { data, error } = await query;
-    
+
     if (error || !data) {
       return getLLMMetrics();
     }
@@ -751,9 +778,9 @@ export async function getLLMMetricsFromDB(timeRange: TimeRange = '1h'): Promise<
     const p99Latency = latencies.length > 0
       ? latencies[Math.floor(latencies.length * 0.99)] || 0
       : 0;
-    
+
     const tokensUsed = dbData.reduce((sum: number, r: any) => sum + (r.tokens_total || 0), 0);
-    const durationHours = timeRange === '1h' ? 1 : timeRange === '24h' ? 24 : dbData.length > 0 ? 
+    const durationHours = timeRange === '1h' ? 1 : timeRange === '24h' ? 24 : dbData.length > 0 ?
       (new Date().getTime() - new Date(dbData[0].created_at).getTime()) / (1000 * 60 * 60) : 1;
     const tokensPerSecond = tokensUsed / (durationHours * 3600);
 
@@ -832,7 +859,7 @@ export async function getAlertsFromDB(): Promise<Alert[]> {
  */
 export async function acknowledgeAlertDB(alertId: string): Promise<void> {
   try {
-    const updateData = { 
+    const updateData = {
       status: 'acknowledged',
       acknowledged_at: new Date().toISOString()
     };
@@ -857,7 +884,7 @@ export async function acknowledgeAlertDB(alertId: string): Promise<void> {
  */
 export async function resolveAlertDB(alertId: string): Promise<void> {
   try {
-    const updateData = { 
+    const updateData = {
       status: 'resolved',
       resolved_at: new Date().toISOString()
     };
@@ -889,7 +916,7 @@ export async function addAlertDB(alert: Omit<Alert, 'id' | 'timestamp' | 'status
     threshold_value: alert.threshold_value,
     current_value: alert.current_value,
   });
-  
+
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -961,7 +988,7 @@ export async function getTimeSeriesDataDB(
         .order('created_at', { ascending: true })
         .limit(1)
         .single();
-      
+
       const firstReq: any = firstRequest;
       startTime = firstReq ? new Date(firstReq.created_at) : new Date(Date.now() - 24 * 60 * 60 * 1000);
     }
@@ -983,14 +1010,14 @@ export async function getTimeSeriesDataDB(
       // Return empty buckets with zero values instead of empty array
       const buckets: Array<{ timestamp: Date; value: number }> = [];
       const bucketSize = (Date.now() - startTime.getTime()) / bucketCount;
-      
+
       for (let i = 0; i < bucketCount; i++) {
         buckets.push({
           timestamp: new Date(startTime.getTime() + i * bucketSize),
           value: 0,
         });
       }
-      
+
       return buckets;
     }
 
@@ -999,7 +1026,7 @@ export async function getTimeSeriesDataDB(
     // Create time buckets
     const bucketSize = (Date.now() - startTime.getTime()) / bucketCount;
     const buckets: Array<{ timestamp: Date; values: number[] }> = [];
-    
+
     for (let i = 0; i < bucketCount; i++) {
       buckets.push({
         timestamp: new Date(startTime.getTime() + i * bucketSize),
@@ -1011,7 +1038,7 @@ export async function getTimeSeriesDataDB(
     for (const request of dbData) {
       const requestTime = new Date(request.created_at).getTime();
       const bucketIndex = Math.floor((requestTime - startTime.getTime()) / bucketSize);
-      
+
       if (bucketIndex >= 0 && bucketIndex < bucketCount) {
         let value: number;
         switch (metric) {
@@ -1122,7 +1149,7 @@ export async function saveMetricsToSupabase() {
   try {
     const summary = getMetricsSummary();
     const llmMetrics = getLLMMetrics();
-    
+
     // Store metrics in localStorage as Supabase tables may not be configured
     const metricsSnapshot = {
       timestamp: new Date().toISOString(),
@@ -1132,7 +1159,7 @@ export async function saveMetricsToSupabase() {
       error_rate: summary.errorRate,
       llm_metrics: llmMetrics,
     };
-    
+
     // Save to localStorage for now
     const snapshots = JSON.parse(localStorage.getItem('metrics_snapshots') || '[]');
     snapshots.push(metricsSnapshot);
@@ -1141,7 +1168,7 @@ export async function saveMetricsToSupabase() {
       snapshots.splice(0, snapshots.length - 100);
     }
     localStorage.setItem('metrics_snapshots', JSON.stringify(snapshots));
-    
+
     console.log('✅ Metrics snapshot saved');
   } catch (e) {
     console.warn('Failed to save metrics snapshot:', e);
@@ -1174,6 +1201,99 @@ export const observabilityService = {
   getTimeSeriesDataDB,
   getLogsFromDB,
   addLogDB,
+  /**
+   * Get audit logs from Supabase
+   */
+  getAuditLogs: async (filters?: { region?: string, language?: string, status?: string }): Promise<AuditLog[]> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      let query = supabase
+        .from('audit_logs')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('timestamp', { ascending: false })
+        .limit(100);
+
+      if (filters?.region) query = query.eq('user_region', filters.region);
+      if (filters?.language) query = query.eq('language', filters.language);
+      if (filters?.status) query = query.eq('decision_status', filters.status);
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      return (data || []).map((log: any) => ({
+        ...log,
+        timestamp: new Date(log.timestamp),
+        cost_usd: Number(log.cost_usd || 0),
+        latency_ms: Number(log.latency_ms || 0),
+        hallucination_risk: Number(log.hallucination_risk || 0),
+        toxicity_score: Number(log.toxicity_score || 0),
+      }));
+    } catch (error) {
+      console.error('Error fetching audit logs:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Get aggregated fairness data
+   */
+  getFairnessData: async (): Promise<FairnessData[]> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .from('audit_logs')
+        .select('user_region, language, cost_usd, latency_ms, hallucination_risk, toxicity_score')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      const grouped = new Map<string, any[]>();
+      (data as any[] || []).forEach(log => {
+        const key = `${log.user_region}|${log.language}`;
+        if (!grouped.has(key)) grouped.set(key, []);
+        grouped.get(key)!.push(log);
+      });
+
+      const safeData = data as any[] || [];
+      const globalAvgCost = safeData.reduce((sum, l) => sum + Number(l.cost_usd || 0), 0) / (safeData.length || 1);
+      const globalAvgLat = safeData.reduce((sum, l) => sum + Number(l.latency_ms || 0), 0) / (safeData.length || 1);
+
+      return Array.from(grouped.entries()).map(([key, logs]) => {
+        const [region, language] = key.split('|');
+        const avgCost = logs.reduce((sum, l) => sum + Number(l.cost_usd || 0), 0) / logs.length;
+        const avgLatency = logs.reduce((sum, l) => sum + Number(l.latency_ms || 0), 0) / logs.length;
+        const avgQuality = logs.reduce((sum, l) => sum + (1 - (Number(l.hallucination_risk || 0) + Number(l.toxicity_score || 0)) / 2), 0) / logs.length;
+
+        // Fairness score logic
+        const costWait = (avgCost / globalAvgCost);
+        const latWait = (avgLatency / globalAvgLat);
+        const fairnessScore = (avgQuality) / (costWait * latWait); // Simplified logic
+
+        let status: 'fair' | 'imbalance' | 'inequality' = 'fair';
+        if (costWait > 1.3 || latWait > 1.3) status = 'inequality';
+        else if (costWait > 1.1 || latWait > 1.1) status = 'imbalance';
+
+        return {
+          region,
+          language,
+          avgCost,
+          avgLatency,
+          avgQuality,
+          requestCount: logs.length,
+          fairnessScore,
+          status,
+        };
+      });
+    } catch (error) {
+      console.error('Error fetching fairness data:', error);
+      return [];
+    }
+  },
 };
 
 export default observabilityService;

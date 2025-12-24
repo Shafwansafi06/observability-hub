@@ -2,13 +2,13 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { 
-  Activity, 
-  Menu, 
-  X, 
-  Sun, 
+import {
+  Activity,
+  Menu,
+  X,
+  Sun,
   Moon,
-  ChevronDown 
+  ChevronDown
 } from "lucide-react";
 
 interface NavbarProps {
@@ -22,6 +22,8 @@ const navLinks = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/dashboard/llm-metrics", label: "LLM Metrics" },
   { href: "/dashboard/anomalies", label: "Anomalies" },
+  { href: "/dashboard/audit-trail", label: "Audit Trail" },
+  { href: "/dashboard/fairness", label: "Fairness Index" },
 ];
 
 export function Navbar({ theme, setTheme }: NavbarProps) {
@@ -75,7 +77,7 @@ export function Navbar({ theme, setTheme }: NavbarProps) {
                 <Moon className="h-5 w-5" />
               )}
             </Button>
-            
+
             <div className="hidden md:flex items-center gap-2">
               <Button variant="ghost" asChild>
                 <Link to="/dashboard">Sign In</Link>

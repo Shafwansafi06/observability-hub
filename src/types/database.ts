@@ -983,6 +983,10 @@ export interface Database {
         Args: { p_user_id: string };
         Returns: Record<string, unknown>;
       };
+      generate_mock_audit_data: {
+        Args: { target_user_id: string };
+        Returns: void;
+      };
     };
     Enums: {
       org_role: OrgRole;
