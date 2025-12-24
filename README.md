@@ -249,12 +249,21 @@ graph TB
     F2 --> F4
     F3 --> F4
     
-    style B1 fill:#6366f1
-    style D1 fill:#22c55e
-    style D2 fill:#3b82f6
-    style D3 fill:#ef4444
     style E5 fill:#ec4899
     style F4 fill:#f59e0b
+
+---
+
+## 🛡️ Architectural Decision: Serverless-Native Observability
+
+"While many entries simply plug in a basic SDK, ObservAI implements a **Split-Plane Observability Architecture**.
+
+*   **Edge Layer (Vercel):** Light-weight OTLP instrumentation captures high-fidelity traces and LLM-specific metrics without adding latency.
+*   **Ingest Layer (Managed Collector):** A centralized OpenTelemetry Collector acts as our telemetry gateway. This allows us to capture infrastructure-level 'hostmetrics' (CPU/Mem/Disk) from the ingest environment while aggregating serverless traces into a unified Datadog dashboard.
+
+This approach mirrors how companies like Uber or Airbnb scale their observability pipelines."
+
+---
 ```
 
 ### Data Flow Sequence

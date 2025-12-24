@@ -1,0 +1,33 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+      grpc:
+        endpoint: 0.0.0.0:4317
+  hostmetrics:
+    collection_interval: 10s
+    scrapers:
+      cpu:
+      memory:
+      disk:
+
+processors:
+  batch:
+
+exporters:
+  datadog:
+    api:
+      site: us5.datadoghq.com # Change if your DD region is different
+      key: ${DD_API_KEY}
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [datadog]
+    metrics:
+      receivers: [otlp, hostmetrics]
+      processors: [batch]
+      exporters: [datadog]
