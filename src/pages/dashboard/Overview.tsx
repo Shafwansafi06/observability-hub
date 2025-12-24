@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { ChartCard } from "@/components/dashboard/ChartCard";
 import { AlertCard } from "@/components/dashboard/AlertCard";
@@ -28,6 +29,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Overview() {
   const [timeRange, setTimeRange] = useState<TimeRangeOption>('1h');
+  const navigate = useNavigate();
 
   const { metrics, loading: metricsLoading } = useMetricsSummary(5000, timeRange);
   const { metrics: llmMetrics } = useLLMMetrics(5000, timeRange);
@@ -148,7 +150,7 @@ export default function Overview() {
           icon={AlertTriangle}
           variant={activeCount > 0 ? "warning" : "default"}
         />
-        <Card className="cursor-pointer hover:bg-muted/50 transition-colors border-primary/20" onClick={() => window.location.href = "/dashboard/audit-trail"}>
+        <Card className="cursor-pointer hover:bg-muted/50 transition-colors border-primary/20" onClick={() => navigate("/dashboard/audit-trail")}>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-sm font-medium">Compliance Audit</CardTitle>
             <Shield className="h-4 w-4 text-primary" />
@@ -160,7 +162,7 @@ export default function Overview() {
             </p>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:bg-muted/50 transition-colors border-accent/20" onClick={() => window.location.href = "/dashboard/fairness"}>
+        <Card className="cursor-pointer hover:bg-muted/50 transition-colors border-accent/20" onClick={() => navigate("/dashboard/fairness")}>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-sm font-medium">Fairness Index</CardTitle>
             <Scale className="h-4 w-4 text-accent" />
